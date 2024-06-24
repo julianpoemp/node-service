@@ -1,9 +1,8 @@
-import {OSServiceManager, OSServiceOptions, OSServiceStatus} from './os-service-manager';
-import {exec} from 'sudo-prompt';
-import {build, PlistObject} from 'plist';
-import {removeEmptyProperties, ScriptRunner} from './functions';
-import {dirname, join} from 'path';
-import {homedir} from 'os';
+import { OSServiceManager, OSServiceOptions, OSServiceStatus } from './os-service-manager';
+import { build, PlistObject } from 'plist';
+import { removeEmptyProperties, ScriptRunner } from './functions';
+import { dirname, join } from 'path';
+import { homedir } from 'os';
 import * as Path from 'node:path';
 
 export class MacOSServiceManager extends OSServiceManager {
@@ -31,30 +30,21 @@ export class MacOSServiceManager extends OSServiceManager {
     await this.prepareLogging();
   }
 
-  install(command: string, commandArgs: string[]): Promise<void> {
-    return new Promise<void>(async (resolve, reject) => {
-      this.command = Path.resolve(command);
-      this.commandArgs = commandArgs;
+  async install(command: string, commandArgs: string[]) {
+    this.command = Path.resolve(command);
+    this.commandArgs = commandArgs;
 
-      if (await this.isInstalled()) {
-        reject(new Error(`Can't install service. Service already exists. Unload it via launchctl unload or call manager.stop();`));
-        return;
+    if (await this.isInstalled()) {
+      throw new Error(`Can't install service. Service already exists. Unload it via launchctl unload or call manager.stop();`);
+    }
+
+    const plist = this.buildPlist();
+
+    await ScriptRunner.runAsAdmin(`echo -e "${plist.replace(/"/g, '\\"').replace(/\n/g, '\\n')}" > "${this.paths.plist}" && launchctl load -w "${this.paths.plist}"`, {
+        name: this.options.name
       }
-
-      const plist = this.buildPlist();
-
-      exec(`echo -e "${plist.replace(/"/g, '\\"').replace(/\n/g, '\\n')}" > "${this.paths.plist}" && launchctl load -w "${this.paths.plist}"`, {
-          name: this.options.name
-        },
-        async (error, stdout, stderr) => {
-          if (error) reject(error);
-          else {
-            await this.updateStatus();
-            resolve();
-          }
-        }
-      );
-    })
+    );
+    await this.updateStatus();
   }
 
   async isInstalled(): Promise<boolean> {
@@ -63,13 +53,8 @@ export class MacOSServiceManager extends OSServiceManager {
   }
 
   async start(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      exec(`launchctl load "${this.paths.plist}"`, {
-        name: this.options.name
-      }, (error, stdout, stderr) => {
-        if (error) reject(error);
-        else resolve();
-      })
+    await ScriptRunner.runAsAdmin(`launchctl load "${this.paths.plist}"`, {
+      name: this.options.name
     });
   }
 
@@ -87,7 +72,7 @@ export class MacOSServiceManager extends OSServiceManager {
             this._status = OSServiceStatus.stopped;
             break;
           case 'waiting':
-            this._status = OSServiceStatus.stopped;
+            this._status = OSServiceStatus.waiting;
             break;
           default:
             this._status = OSServiceStatus.unknown;
@@ -103,27 +88,17 @@ export class MacOSServiceManager extends OSServiceManager {
   }
 
   async stop(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      exec(`launchctl unload "${this.paths.plist}"`, {
-        name: this.options.name
-      }, (error, stdout, stderr) => {
-        if (error) reject(error);
-        else resolve();
-      })
+    await ScriptRunner.runAsAdmin(`launchctl unload "${this.paths.plist}"`, {
+      name: this.options.name
     });
   }
 
   async uninstall(): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      let removeScript = `launchctl unload "${this.paths.plist}" && rm -rf "${this.paths.plist}"`;
-      if (this.options.logging?.enabled && this.paths.logRoot !== '/Library/Logs/' && this.paths.logRoot !== join(homedir(), '/Library/Logs/')) removeScript += ` "${this.paths.logRoot}"`;
+    let removeScript = `launchctl unload "${this.paths.plist}" && rm -rf "${this.paths.plist}"`;
+    if (this.options.logging?.enabled && this.paths.logRoot !== '/Library/Logs/' && this.paths.logRoot !== join(homedir(), '/Library/Logs/')) removeScript += ` "${this.paths.logRoot}"`;
 
-      exec(removeScript, {
-        name: `Uninstallation of ${this.options.name}`
-      }, (error, stdout, stderr) => {
-        if (error) reject(error);
-        else resolve();
-      })
+    await ScriptRunner.runAsAdmin(removeScript, {
+      name: `Uninstallation of ${this.options.name}`
     });
   }
 

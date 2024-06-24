@@ -1,4 +1,5 @@
-import {ChildProcess, exec} from 'child_process';
+import { ChildProcess, exec } from 'child_process';
+import * as SudoPrompt from 'sudo-prompt';
 import * as fs from 'fs';
 
 /**
@@ -15,7 +16,7 @@ export function removeEmptyProperties<T>(
   } = {
     removeEmptyStrings: true,
     removeNull: true,
-    removeUndefined: true,
+    removeUndefined: true
   }
 ): T {
   if (Array.isArray(obj)) {
@@ -67,12 +68,25 @@ export class ScriptRunnerOptions {
 
   constructor(partial?: Partial<ScriptRunnerOptions>) {
     Object.assign(this, {
-      ...(partial ?? {}),
+      ...(partial ?? {})
     });
   }
 }
 
 export class ScriptRunner {
+  public static runAsAdmin(command: string, options: {
+    name?: string,
+    icns?: string,
+    env?: { [key: string]: string }
+  }): Promise<any> {
+    return new Promise<void>((resolve, reject) => {
+      SudoPrompt.exec(command, options, (error) => {
+        if (error) reject(error);
+        else resolve();
+      });
+    });
+  }
+
   public static async run(
     scriptPath: string,
     options: Partial<ScriptRunnerOptions> = new ScriptRunnerOptions(),
@@ -85,7 +99,7 @@ export class ScriptRunner {
       let error = '';
 
       const childProcess = exec(scriptPath, {
-        env: {...process.env, ...options.env},
+        env: { ...process.env, ...options.env }
       });
 
       let pipeLine;
@@ -153,6 +167,6 @@ export async function exists(path: string) {
     fs.access(path, (error) => {
       if (error) resolve(false);
       else resolve(true);
-    })
+    });
   });
 }
