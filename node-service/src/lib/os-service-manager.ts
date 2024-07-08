@@ -2,6 +2,9 @@ export interface OSServiceOptions {
   name: string;
   slug: string;
   level: 'system' | 'user';
+}
+
+export interface OSServiceInstallationOptions {
   description?: string;
   cwd?: string;
   env?: Record<string, any>;
@@ -31,19 +34,24 @@ export enum OSServiceStatus {
 }
 
 export abstract class OSServiceManager {
+  get installationOptions(): OSServiceInstallationOptions {
+    return this._installationOptions;
+  }
+
   get status(): OSServiceStatus {
     return this._status;
   }
 
   protected options?: OSServiceOptions;
   protected _status = OSServiceStatus.not_installed;
+  protected _installationOptions?: OSServiceInstallationOptions;
 
-  protected async initialize(options: OSServiceOptions) {
+  public async initialize(options: OSServiceOptions) {
     this.options = options;
     await this.updateStatus();
   }
 
-  abstract install(command: string, commandArgs: string[]): Promise<void>;
+  abstract install(command: string, commandArgs: string[], options: OSServiceInstallationOptions): Promise<void>;
 
   abstract uninstall(): Promise<void>;
 

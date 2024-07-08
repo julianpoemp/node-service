@@ -1,4 +1,4 @@
-import { OSServiceManager, OSServiceOptions, OSServiceStatus } from 'node-service';
+import {OSServiceInstallationOptions, OSServiceManager, OSServiceOptions, OSServiceStatus} from 'node-service';
 import { ScriptRunner } from './functions';
 
 // see https://learn.microsoft.com/de-de/windows-server/administration/windows-commands/sc-create
@@ -8,7 +8,7 @@ export class WindowsServiceManager extends OSServiceManager {
     await super.initialize(options);
   }
 
-  async install(command: string, commandArgs: string[]): Promise<void> {
+  async install(command: string, commandArgs: string[], options: OSServiceInstallationOptions): Promise<void> {
     const script = `sc.exe create ${this.options.slug} binpath= "${command}${commandArgs.length === 0 ? '' : ' ' + commandArgs.map(a => a.replace(/"/g, '\'')).join(' ')}" DisplayName= "${this.options.name}" start= auto type= share`;
     await ScriptRunner.runAsAdmin(script, {
       name: this.options.name
