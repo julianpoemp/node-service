@@ -80,8 +80,8 @@ export class ScriptRunner {
     env?: { [key: string]: string }
   }): Promise<any> {
     return new Promise<void>((resolve, reject) => {
-      SudoPrompt.exec(command, options, (error) => {
-        if (error) reject(error);
+      SudoPrompt.exec(command, options, (error, stdout, stderr) => {
+        if (error) reject(stderr ?? error);
         else resolve();
       });
     });

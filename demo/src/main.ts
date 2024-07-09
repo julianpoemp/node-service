@@ -1,4 +1,6 @@
 import {initializeOSService} from 'node-service';
+import { join } from 'path';
+import * as os from 'node:os';
 
 async function wait(seconds: number) {
   return new Promise<void>((resolve) => {
@@ -12,31 +14,40 @@ async function main() {
   const manager = await initializeOSService({
     name: 'OctraBackend Service',
     level: 'system',
-    slug: 'octra-backend-service'
+    slug: 'octra-backend-service',
+    windows: {
+      pathToWinswConfig: "C:\\Users\\geronimo\\Desktop\\winsw.xml"
+    }
   });
 
-  // await manager.uninstall();
   if (manager.status === 'not_installed') {
+
     console.log('Install...');
-    await manager.install('/Applications/OctraServerGUI.app/Contents/Resources/core/octra-server', [
+    // path.join('\\\\?\\pipe', process.cwd(), 'myctl')
+    await manager.install('C:\\Users\\gero_admin\\AppData\\Roaming\\OCBServerGUI\\octra-server.exe', [
       'serve',
       '--socket=true',
-      '--socketPath="/tmp/ocb_48a0a1f1-6ddf-4f20-9b83-c2e52c76b97cd"',
+      `--socketPath="${join('\\\\?\\pipe\\temp\\', 'ocb_server')}"`,
       '--socketToken="test12345"',
-      '--configPath="/Users/ips/Library/Application Support/OCBServerGUI/config.json"',
-      '--socket'
+      '--configPath="C:\\Users\\gero_admin\\AppData\\Roaming\\OCBServerGUI\\config.json"'
     ], {
       logging: {
-        enabled: true
+        enabled: false
       },
       macos: {
         label: 'octra-backend-service'
       }
     });
     console.log('installed!');
+    await manager.start();
   }
 
-  console.log(JSON.stringify(manager.installationOptions, null, 2));
+  /*
+  // await manager.uninstall();
+
+*/
+
+  // await manager.stop();
   while (true) {
     console.log(`STATUS: ${manager.status}`);
     await manager.updateStatus();
@@ -53,7 +64,7 @@ async function main() {
     console.log(`STATUS: ${manager.status}`);
     await manager.updateStatus();
     await wait(1);
-    // await manager.stop();
+    await manager.stop();
     console.log(`STATUS: ${manager.status}`);
     await manager.updateStatus();
     await wait(1);
@@ -69,8 +80,7 @@ async function main() {
     console.log(`STATUS: ${manager.status}`);
     await manager.updateStatus();
     await wait(1);
-    // await manager.start();
-
+    await manager.start();
   }
 }
 

@@ -2,15 +2,13 @@ export interface OSServiceOptions {
   name: string;
   slug: string;
   level: 'system' | 'user';
+  windows?: WindowsOSServiceOptions;
 }
 
 export interface OSServiceInstallationOptions {
   description?: string;
   cwd?: string;
   env?: Record<string, any>;
-  maxRetries?: number;
-  maxRestarts?: number;
-  waitTime?: number;
   logging?: {
     enabled: boolean;
     outDir?: string;
@@ -22,6 +20,11 @@ export interface MacOSServiceOptions {
   label: string;
   startInterval?: number;
   keepAlive?: boolean;
+}
+
+export interface WindowsOSServiceOptions {
+  pathToWinswExe?: string;
+  pathToWinswConfig?: string;
 }
 
 export enum OSServiceStatus {
