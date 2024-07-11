@@ -1,5 +1,5 @@
 import {initializeOSService} from 'node-service';
-import { join } from 'path';
+import {join} from 'path';
 import * as os from 'node:os';
 
 async function wait(seconds: number) {
@@ -16,23 +16,35 @@ async function main() {
     level: 'system',
     slug: 'octra-backend-service',
     windows: {
-      pathToWinswConfig: "C:\\Users\\geronimo\\Desktop\\winsw.xml"
+      pathToWinswConfig: 'C:\\Users\\geronimo\\Desktop\\winsw.xml'
     }
   });
 
-  if (manager.status === 'not_installed') {
+  //await manager.stop();
+  //await manager.uninstall();
 
+  if (manager.status === 'not_installed') {
     console.log('Install...');
     // path.join('\\\\?\\pipe', process.cwd(), 'myctl')
-    await manager.install('C:\\Users\\gero_admin\\AppData\\Roaming\\OCBServerGUI\\octra-server.exe', [
+    let command = '';
+    const args: string[] = [
       'serve',
       '--socket=true',
       `--socketPath="${join('\\\\?\\pipe\\temp\\', 'ocb_server')}"`,
       '--socketToken="test12345"',
       '--configPath="C:\\Users\\gero_admin\\AppData\\Roaming\\OCBServerGUI\\config.json"'
-    ], {
+    ];
+    if (os.platform() === 'win32') {
+      command = 'C:\\Users\\gero_admin\\AppData\\Roaming\\OCBServerGUI\\octra-server.exe';
+    } else if (os.platform() === 'darwin') {
+      command = '/Applications/OctraServerGUI.app/Contents/Resources/core/octra-server';
+      args[4] = '/Users/ips/Library/Application Support/config.json'
+    }
+
+    await manager.install(command, args, {
       logging: {
-        enabled: false
+        enabled: true,
+        outDir: '/Users/ips/Library/Application Support/logs'
       },
       macos: {
         label: 'octra-backend-service'
@@ -42,12 +54,6 @@ async function main() {
     await manager.start();
   }
 
-  /*
-  // await manager.uninstall();
-
-*/
-
-  // await manager.stop();
   while (true) {
     console.log(`STATUS: ${manager.status}`);
     await manager.updateStatus();
