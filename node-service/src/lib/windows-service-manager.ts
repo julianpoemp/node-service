@@ -1,11 +1,7 @@
-import { exists, ScriptRunner } from './functions';
-import { writeFile } from 'fs/promises';
-import {
-  OSServiceInstallationOptions,
-  OSServiceManager,
-  OSServiceOptions,
-  OSServiceStatus
-} from './os-service-manager';
+import {exists, ScriptRunner} from './functions';
+import {writeFile} from 'fs/promises';
+import {OSServiceInstallationOptions, OSServiceManager, OSServiceOptions, OSServiceStatus} from './os-service-manager';
+import * as Path from 'node:path';
 
 export class WindowsServiceManager extends OSServiceManager {
   override async initialize(options: OSServiceOptions) {
@@ -14,15 +10,15 @@ export class WindowsServiceManager extends OSServiceManager {
     await this.updateStatus();
   }
 
-  private get winswExePath(){
-    return this.options.windows?.pathToWinswExe ?? "winsw";
+  private get winswExePath() {
+    return this.options.windows?.pathToWinswExe ?? 'winsw';
   }
 
-  async checkRequirements(){
-    let version = "";
+  async checkRequirements() {
+    let version = '';
     try {
       version = await ScriptRunner.run(`${this.winswExePath} --version`);
-    } catch(e) {
+    } catch (e) {
       throw new Error(`Can't find winsw.exe binary. Make sure to have winsw v3 installed and referenced to %PATH$ environment variable. Or set the path to winsw.exe in options.windows.winsw.path.`);
     }
 
@@ -31,7 +27,7 @@ export class WindowsServiceManager extends OSServiceManager {
     }
 
     if (!this.options?.windows.pathToWinswConfig) {
-      throw new Error("You have to define a path to a (non)-existing winsw configuration file. Please check options.windows.pathToWinswConfig")
+      throw new Error('You have to define a path to a (non)-existing winsw configuration file. Please check options.windows.pathToWinswConfig')
     }
   }
 
@@ -41,11 +37,13 @@ export class WindowsServiceManager extends OSServiceManager {
 
 
       await writeFile(this.options.windows?.pathToWinswConfig, this.buildWinsXML(command, commandArgs, options), {
-        encoding: "utf-8"
+        encoding: 'utf-8'
       });
     }
 
-    const script = `${this.winswExePath} install ${this.options.windows?.pathToWinswConfig}`;
+    const configDir = Path.parse(this.options.windows?.pathToWinswConfig).dir;
+    const configName = Path.parse(this.options.windows?.pathToWinswConfig).base;
+    const script = `cd "${configDir}" && ${this.winswExePath} install ${configName}`;
     await ScriptRunner.runAsAdmin(script, {
       name: this.options.name
     });
@@ -53,7 +51,7 @@ export class WindowsServiceManager extends OSServiceManager {
   }
 
   async uninstall(): Promise<void> {
-    await ScriptRunner.runAsAdmin(`${this.winswExePath} stop "${this.options.windows?.pathToWinswConfig}" && uninstall "${this.options.windows?.pathToWinswConfig}"`, {
+    await ScriptRunner.runAsAdmin(`${this.winswExePath} stop "${this.options.windows?.pathToWinswConfig}" && ${this.winswExePath} uninstall "${this.options.windows?.pathToWinswConfig}"`, {
       name: this.options.name
     });
     await this.updateStatus();
@@ -97,7 +95,7 @@ export class WindowsServiceManager extends OSServiceManager {
             default:
               this._status = OSServiceStatus.unknown;
           }
-        } else if (output === "NonExistent\n") {
+        } else if (output === 'NonExistent\n') {
           this._status = OSServiceStatus.not_installed;
         }
       } catch (e) {
@@ -108,32 +106,32 @@ export class WindowsServiceManager extends OSServiceManager {
     }
   }
 
-  private buildWinsXML(command: string, commandArgs: string[], installationOptions: OSServiceInstallationOptions){
+  private buildWinsXML(command: string, commandArgs: string[], installationOptions: OSServiceInstallationOptions) {
     let winswFileContent = `<service>
   <id>${this.options.slug}</id>
   <name>${this.options.name}</name>
   <description>${installationOptions.description}</description>
   <executable>${command}</executable>
-  <arguments>${commandArgs.join(" ")}</arguments>`
+  <arguments>${commandArgs.join(' ')}</arguments>`
 
-    if(installationOptions.cwd) {
-      winswFileContent +=  `
+    if (installationOptions.cwd) {
+      winswFileContent += `
   <workingdirectory>${installationOptions.cwd}</workingdirectory>`
     }
 
-    if(installationOptions.env && Object.keys(installationOptions.env).length > 0) {
+    if (installationOptions.env && Object.keys(installationOptions.env).length > 0) {
       for (const key of Object.keys(installationOptions.env)) {
-        winswFileContent +=  `
-  <env name="${key}" value="${installationOptions.env[key].replace(/"/g, "\"")}" />`;
+        winswFileContent += `
+  <env name="${key}" value="${installationOptions.env[key].replace(/"/g, '"')}" />`;
       }
     }
 
-    if(installationOptions.logging?.enabled) {
-      if(installationOptions.logging?.outDir) {
+    if (installationOptions.logging?.enabled) {
+      if (installationOptions.logging?.outDir) {
         winswFileContent += `
   <logpath>${installationOptions.logging?.outDir}</logpath>`;
-  }
-  winswFileContent += `
+      }
+      winswFileContent += `
   <log mode="roll-by-size">
   <sizeThreshold>10240</sizeThreshold>
   <keepFiles>4</keepFiles>`
@@ -145,7 +143,7 @@ export class WindowsServiceManager extends OSServiceManager {
   <log mode="none"></log>`
     }
 
-    winswFileContent +=`
+    winswFileContent += `
 </service>`
 
     return winswFileContent;
