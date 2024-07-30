@@ -1,7 +1,8 @@
 import {platform} from 'os';
-import {MacOSServiceManager, OSServiceManager, OSServiceOptions} from 'node-service';
+import {MacOSServiceManager} from './macos-service-manager';
 import {WindowsServiceManager} from './windows-service-manager';
 import { LinuxServiceManager } from './linux-service-manager';
+import { OSServiceManager, OSServiceOptions } from './os-service-manager';
 
 export async function initializeOSService(options: OSServiceOptions): Promise<OSServiceManager> {
   if (platform() === 'darwin') {
