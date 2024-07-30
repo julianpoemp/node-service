@@ -2,6 +2,10 @@
 
 This file was generated using [@jscutlery/semver](https://github.com/jscutlery/semver).
 
+# [0.1.0](https://github.com/julianpoemp/node-service/compare/node-service-0.0.1...node-service-0.1.0) (2024-07-30)
+
+
+
 ## 0.0.1 (2024-07-30)
 
 
