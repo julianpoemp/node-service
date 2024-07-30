@@ -2,7 +2,21 @@
   "name": "node-service",
   "version": "0.0.1",
   "peerDependencies": {
-    "sudo-prompt": "^9.2.1",
-    "handlebars": "^4.7.8"
-  }
+    "sudo-prompt": "^9.2.1"
+  },
+  "description": "This NodeJS library allows to easily install and control OS services on Windows, MacOS and linux using shell commands. Uses sudo-prompt if admin privileges are needed.",
+  "private": false,
+  "author": "Julian Poemp",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/julianpoemp/node-service/issues"
+  },
+  "homepage": "https://github.com/julianpoemp/node-service",
+  "keywords": [
+    "nodejs",
+    "os-service",
+    "service",
+    "typescript",
+    "javascript"
+  ]
 }
