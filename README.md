@@ -1,4 +1,4 @@
-<h1>node-service <a href="https://www.npmjs.com/package/node-service?activeTab=readme"><img alt="NPM Version" src="https://img.shields.io/npm/v/node-service"></a></h1>
+<h1>node-service <a href="https://www.npmjs.com/package/@julianpoemp/node-service?activeTab=readme"><img alt="NPM Version" src="https://img.shields.io/npm/v/@julianpoemp/node-service"></a></h1>
 
 This NodeJS library allows to easily install and control OS services on Windows, MacOS and linux using shell commands. Uses sudo-prompt if admin privileges are needed.
 
@@ -31,7 +31,7 @@ Make sure that sudo-prompt is installed:
 ```
 
 ```shell
-   npm install node-service
+   npm install @julianpoemp/node-service
 ```
 
 On macOS targets "plist" is needed:
