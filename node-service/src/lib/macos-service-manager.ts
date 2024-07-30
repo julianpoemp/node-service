@@ -45,8 +45,8 @@ export class MacOSServiceManager extends OSServiceManager {
     const plist = this.buildPlist(options);
 
     if (this.options.level === 'system') {
-      const logFolderCreation = options.logging?.enabled ? ` && mkdir ${this.paths.logRoot} 2>/dev/null && chmod 745 ${this.paths.logRoot} && touch ${this.paths.log} 2>/dev/null && chmod 745 ${this.paths.log} && touch ${this.paths.errorLog} 2>/dev/null && chmod 745 ${this.paths.errorLog} ` : '';
-      await ScriptRunner.runAsAdmin(`printf '${plist.replace(/'/g, '"').replace(/\n/g, '\\n')}' > "/tmp/${this.options.slug}.plist" && mv -f "/tmp/${this.options.slug}.plist" /Library/LaunchDaemons/${this.options.slug}.plist && launchctl load -w "${this.paths.plist}"`, {
+      const logFolderCreation = options.logging?.enabled ? `mkdir -p ${this.paths.logRoot} 2>/dev/null && chmod 745 ${this.paths.logRoot} && touch ${this.paths.log} 2>/dev/null && chmod 745 ${this.paths.log} && touch ${this.paths.errorLog} 2>/dev/null && chmod 745 ${this.paths.errorLog} ` : '';
+      await ScriptRunner.runAsAdmin(`${logFolderCreation}printf '${plist.replace(/'/g, '"').replace(/\n/g, '\\n')}' > "/tmp/${this.options.slug}.plist" && mv -f "/tmp/${this.options.slug}.plist" /Library/LaunchDaemons/${this.options.slug}.plist && launchctl load -w "${this.paths.plist}"`, {
           name: this.options.name
         }
       );

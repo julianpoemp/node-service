@@ -1,6 +1,5 @@
 import {initializeOSService} from 'node-service';
-import {join} from 'path';
-import * as os from 'node:os';
+import {join, resolve} from 'path';
 
 async function wait(seconds: number) {
   return new Promise<void>((resolve) => {
@@ -12,46 +11,45 @@ async function wait(seconds: number) {
 
 async function main() {
   const manager = await initializeOSService({
-    name: 'OctraBackend Service',
-    level: 'system',
-    slug: 'octra-backend-service',
+    name: 'Hello World Service Example',
+    level: 'user',
+    slug: 'hello-world5',
     windows: {
-      pathToWinswConfig: 'C:\\Users\\geronimo\\Desktop\\winsw.xml'
+      pathToWinswConfig: resolve(join("data", "winsw.xml"))
     }
   });
 
-  //await manager.stop();
-  //await manager.uninstall();
+  console.log("UNINSTALL!");
+  await manager.uninstall();
 
   if (manager.status === 'not_installed') {
     console.log('Install...');
-    // path.join('\\\\?\\pipe', process.cwd(), 'myctl')
-    let command = '';
     const args: string[] = [
-      'serve',
-      '--socket=true',
-      `--socketPath="${join('\\\\?\\pipe\\temp\\', 'ocb_server')}"`,
-      '--socketToken="test12345"',
-      '--configPath="C:\\Users\\gero_admin\\AppData\\Roaming\\OCBServerGUI\\config.json"'
+      "node"
     ];
-    if (os.platform() === 'win32') {
-      command = 'C:\\Users\\gero_admin\\AppData\\Roaming\\OCBServerGUI\\octra-server.exe';
-    } else if (os.platform() === 'darwin') {
-      command = '/Applications/OctraServerGUI.app/Contents/Resources/core/octra-server';
-      args[4] = '/Users/ips/Library/Application Support/config.json'
-    }
 
-    await manager.install(command, args, {
+    await manager.install(resolve(join("demo", "src", "assets", "hello-world.js")), args, {
+      description: "This service just prints 'Hello world' every second.",
       logging: {
-        enabled: true,
-        outDir: '/Users/ips/Library/Application Support/logs'
+        enabled: true
       },
-      macos: {
-        label: 'octra-backend-service'
+      linux: {
+        Unit: {
+          After: "network.target",
+          StartLimitIntervalSync: 0
+        },
+        Service: {
+          Type: "simple",
+          Restart: "always",
+          RestartSec: 5
+        },
+        Install: {
+          WantedBy: "multi-user.target"
+        }
       }
     });
     console.log('installed!');
-    await manager.start();
+    // await manager.start();
   }
 
   while (true) {
@@ -61,7 +59,7 @@ async function main() {
     console.log(`STATUS: ${manager.status}`);
     await manager.updateStatus();
     await wait(1);
-    console.log(`STATUS: ${manager.status}`);
+    console.log(`STAsTUS: ${manager.status}`);
     await manager.updateStatus();
     await wait(1);
     console.log(`STATUS: ${manager.status}`);
@@ -90,4 +88,6 @@ async function main() {
   }
 }
 
-main();
+main().catch((e)=>{
+  console.log(e?.message ?? e);
+})

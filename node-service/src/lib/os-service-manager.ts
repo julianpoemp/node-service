@@ -3,6 +3,7 @@ export interface OSServiceOptions {
   slug: string;
   level: 'system' | 'user';
   windows?: WindowsOSServiceOptions;
+  icns?: string;
 }
 
 export interface OSServiceInstallationOptions {
@@ -14,12 +15,34 @@ export interface OSServiceInstallationOptions {
     outDir?: string;
   }
   macos?: MacOSServiceOptions;
+  linux?: LinuxOSServiceOptions;
 }
 
 export interface MacOSServiceOptions {
   label: string;
   startInterval?: number;
   keepAlive?: boolean;
+}
+
+export interface LinuxOSServiceOptions {
+  Unit?: {
+    Before?: string;
+    After?: string;
+    StartLimitIntervalSync?: number;
+  },
+  Service?: {
+    Type?: string;
+    Restart?: string;
+    RestartSec?: number;
+    StandardOutput?: string;
+    StandardError?: string;
+    User?: string;
+    WorkingDirectory?: string;
+    ExecStart?: string;
+  },
+  Install: {
+    WantedBy?: string;
+  }
 }
 
 export interface WindowsOSServiceOptions {
@@ -33,7 +56,8 @@ export enum OSServiceStatus {
   'unknown' = 'unknown',
   'waiting' = 'waiting',
   'running' = 'running',
-  'stopped' = 'stopped'
+  'stopped' = 'stopped',
+  'failed' = 'failed'
 }
 
 export abstract class OSServiceManager {
