@@ -18,5 +18,5 @@
       "node-service": ["node-service/src/index.ts"]
     }
   },
-  "exclude": ["node_modules", "tmp"],
+  "exclude": ["node_modules", "tmp"]
 }

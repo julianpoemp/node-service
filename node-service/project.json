@@ -7,14 +7,46 @@
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/node-service",
         "tsConfig": "node-service/tsconfig.lib.json",
         "packageJson": "node-service/package.json",
         "main": "node-service/src/index.ts",
-        "assets": ["node-service/*.md"]
+        "assets": [
+          "node-service/*.md"
+        ]
       }
+    },
+    "version": {
+      "executor": "@jscutlery/semver:version",
+      "options": {
+        "preset": "angular",
+        "postTargets": [
+          "node-service:github"
+        ],
+        "baseBranch": "main",
+        "commitMessageFormat": "build(${projectName}): release version ${version}"
+      }
+    },
+    "github": {
+      "executor": "@jscutlery/semver:github",
+      "options": {
+        "tag": "${tag}",
+        "notes": "${notes}"
+      }
+    },
+    "npm": {
+      "executor": "ngx-deploy-npm:deploy",
+      "options": {
+        "access": "public",
+        "distFolderPath": "dist/node-service"
+      },
+      "dependsOn": [
+        "build"
+      ]
     }
   }
 }
