@@ -2,6 +2,15 @@
 
 This file was generated using [@jscutlery/semver](https://github.com/jscutlery/semver).
 
+## [0.1.2](https://github.com/julianpoemp/node-service/compare/node-service-0.1.1...node-service-0.1.2) (2024-08-01)
+
+
+### Bug Fixes
+
+* **node-service:** process exits when readline used ([30cbeff](https://github.com/julianpoemp/node-service/commit/30cbeffa0e2bb98b04bf94b4cd3693f83d519ef2))
+
+
+
 ## [0.1.1](https://github.com/julianpoemp/node-service/compare/node-service-0.1.0...node-service-0.1.1) (2024-07-30)
 
 
