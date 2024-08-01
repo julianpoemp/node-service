@@ -105,10 +105,6 @@ export class ScriptRunner {
       let pipeLine;
       if (childProcess) {
         processCreatedCallback(childProcess);
-        // redirect inputs from parent to child
-        process.stdin.pipe(childProcess.stdin).on('error', (err) => {
-          console.log(err);
-        });
         childProcess.stdin.on('data', (data) => {
         }); // hack to allow inputs to child
 
@@ -145,10 +141,6 @@ export class ScriptRunner {
           } else {
             resolve(output);
           }
-        });
-        // redirect inputs from parent to child
-        process.stdin.pipe(childProcess.stdin).on('error', (err) => {
-          console.log(err);
         });
         childProcess.stdin.on('data', (data) => {
         }); // hack to allow inputs to child
