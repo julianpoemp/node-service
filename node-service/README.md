@@ -18,7 +18,7 @@ The goal of this repository is to simplify the creation and management of OS ser
 
 This project is in an early development stage. There may be bugs or missing features. Currently this package doesn't parse existing service config files (e.g. on Linux).
 
-## Remarks
+## Requirements
 
 - Windows: If you plan to use this library for windows, make sure that winsw is installed on the user's machine. You can add a winsw.exe binary to your application and define the path to that file in the options.
 - MacOS: Make sure, that the plist package is installed: `npm install plist`
