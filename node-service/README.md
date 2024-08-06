@@ -1,6 +1,6 @@
 <h1>node-service <a href="https://www.npmjs.com/package/@julianpoemp/node-service?activeTab=readme"><img alt="NPM Version" src="https://img.shields.io/npm/v/@julianpoemp/node-service"></a></h1>
 
-This NodeJS library allows to easily install and control OS services on Windows, MacOS and linux using shell commands. Uses sudo-prompt if admin privileges are needed.
+This NodeJS library allows to easily install and control OS background services on Windows, MacOS and Linux using shell commands. Uses [sudo-prompt](https://github.com/jorangreef/sudo-prompt) to request on desktop and "sudo" only on headless servers.
 
 ## Goal
 The goal of this repository is to simplify the creation and management of OS services using NodeJS.
@@ -10,6 +10,7 @@ The goal of this repository is to simplify the creation and management of OS ser
 - One configuration for all OS services: Windows, MacOS, Linux
 - Supported functions: installation/uninstallation, start, stop, status
 - Supported scopes: "system" (user asked for admin privileges) or "user"
+- Option "headless" for headless servers (Linux, MacOS only)
 - TS typings
 - Async functions
 
