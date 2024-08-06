@@ -1,6 +1,6 @@
 {
   "name": "@julianpoemp/node-service",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "peerDependencies": {
     "sudo-prompt": "^9.2.1"
   },

@@ -2,6 +2,15 @@
 
 This file was generated using [@jscutlery/semver](https://github.com/jscutlery/semver).
 
+## [0.1.3](https://github.com/julianpoemp/node-service/compare/node-service-0.1.2...node-service-0.1.3) (2024-08-06)
+
+
+### Bug Fixes
+
+* **node-service:** requesting admin privileges not working on headless macos/linux ([92328c9](https://github.com/julianpoemp/node-service/commit/92328c90abe8c1f5f0fe233471fe96f4b08b8ac5))
+
+
+
 ## [0.1.2](https://github.com/julianpoemp/node-service/compare/node-service-0.1.1...node-service-0.1.2) (2024-08-01)
 
 
