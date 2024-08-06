@@ -89,7 +89,6 @@ export class ScriptRunner {
     }
 
     if (options?.headless) {
-      console.log(`sudo -- sh -c '${command.replace(/'/g, '"')}'`)
       return ScriptRunner.run(`sudo -- sh -c '${command.replace(/'/g, '"')}'`, options);
     } else {
       return new Promise<void>((resolve, reject) => {
