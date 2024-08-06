@@ -45,28 +45,32 @@ export class WindowsServiceManager extends OSServiceManager {
     const configName = Path.parse(this.options.windows?.pathToWinswConfig).base;
     const script = `cd "${configDir}" && ${this.winswExePath} install ${configName}`;
     await ScriptRunner.runAsAdmin(script, {
-      name: this.options.name
+      name: this.options.name,
+      headless: this.options.headless
     });
     await this.updateStatus();
   }
 
   async uninstall(): Promise<void> {
     await ScriptRunner.runAsAdmin(`${this.winswExePath} stop "${this.options.windows?.pathToWinswConfig}" && ${this.winswExePath} uninstall "${this.options.windows?.pathToWinswConfig}"`, {
-      name: this.options.name
+      name: this.options.name,
+      headless: this.options.headless
     });
     await this.updateStatus();
   }
 
   async start(): Promise<void> {
     await ScriptRunner.runAsAdmin(`${this.winswExePath} start ${this.options.windows?.pathToWinswConfig}`, {
-      name: this.options.name
+      name: this.options.name,
+      headless: this.options.headless
     });
     await this.updateStatus();
   }
 
   async stop(): Promise<void> {
     await ScriptRunner.runAsAdmin(`${this.winswExePath} stop ${this.options.windows?.pathToWinswConfig}`, {
-      name: this.options.name
+      name: this.options.name,
+      headless: this.options.headless
     });
     await this.updateStatus();
   }

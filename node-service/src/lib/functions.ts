@@ -1,6 +1,7 @@
-import { ChildProcess, exec } from 'child_process';
+import {ChildProcess, exec} from 'child_process';
 import * as SudoPrompt from 'sudo-prompt';
 import * as fs from 'fs';
+import * as os from 'node:os';
 
 /**
  * removes all empty values from an given object.
@@ -76,15 +77,28 @@ export class ScriptRunnerOptions {
 export class ScriptRunner {
   public static runAsAdmin(command: string, options: {
     name?: string,
+    headless?: boolean,
     icns?: string,
     env?: { [key: string]: string }
   }): Promise<any> {
-    return new Promise<void>((resolve, reject) => {
-      SudoPrompt.exec(command, options, (error, stdout, stderr) => {
-        if (error) reject(stderr ?? error);
-        else resolve();
+    if (os.platform() === 'win32') {
+      options = {
+        ...(options ?? {}),
+        headless: false
+      };
+    }
+
+    if (options?.headless) {
+      console.log(`sudo -- sh -c '${command.replace(/'/g, '"')}'`)
+      return ScriptRunner.run(`sudo -- sh -c '${command.replace(/'/g, '"')}'`, options);
+    } else {
+      return new Promise<void>((resolve, reject) => {
+        SudoPrompt.exec(command, options, (error, stdout, stderr) => {
+          if (error) reject(stderr ?? error);
+          else resolve();
+        });
       });
-    });
+    }
   }
 
   public static async run(
@@ -99,7 +113,7 @@ export class ScriptRunner {
       let error = '';
 
       const childProcess = exec(scriptPath, {
-        env: { ...process.env, ...options.env }
+        env: {...process.env, ...options.env}
       });
 
       let pipeLine;

@@ -11,9 +11,10 @@ async function wait(seconds: number) {
 
 async function main() {
   const manager = await initializeOSService({
-    name: 'Hello World Service Example',
-    level: 'user',
-    slug: 'hello-world5',
+    name: 'Hello World Service Example11',
+    level: 'system',
+    slug: 'hello-world11',
+    headless: true,
     windows: {
       pathToWinswConfig: resolve(join("data", "winsw.xml"))
     }
@@ -59,7 +60,7 @@ async function main() {
     console.log(`STATUS: ${manager.status}`);
     await manager.updateStatus();
     await wait(1);
-    console.log(`STAsTUS: ${manager.status}`);
+    console.log(`STATUS: ${manager.status}`);
     await manager.updateStatus();
     await wait(1);
     console.log(`STATUS: ${manager.status}`);

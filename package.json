@@ -6,7 +6,8 @@
     "prepare": "husky",
     "build:lib": "nx build node-service",
     "release:lib": "nx run node-service:version --releaseAs=patch --push",
-    "publish:lib": "nx npm node-service"
+    "publish:lib": "nx npm node-service",
+    "start": "nx serve demo"
   },
   "private": true,
   "devDependencies": {

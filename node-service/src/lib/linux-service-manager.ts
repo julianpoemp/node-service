@@ -1,14 +1,9 @@
-import {
-  OSServiceInstallationOptions,
-  OSServiceManager,
-  OSServiceOptions,
-  OSServiceStatus
-} from './os-service-manager';
-import { exists, removeEmptyProperties, ScriptRunner } from './functions';
-import { join } from 'path';
-import { homedir } from 'os';
+import {OSServiceInstallationOptions, OSServiceManager, OSServiceOptions, OSServiceStatus} from './os-service-manager';
+import {exists, removeEmptyProperties, ScriptRunner} from './functions';
+import {join} from 'path';
+import {homedir} from 'os';
 import * as Path from 'node:path';
-import { mkdir, writeFile } from 'fs/promises';
+import {mkdir, writeFile} from 'fs/promises';
 
 export class LinuxServiceManager extends OSServiceManager {
   private paths: {
@@ -62,7 +57,8 @@ export class LinuxServiceManager extends OSServiceManager {
     if (this.options.level === 'system') {
       await ScriptRunner.runAsAdmin(script, {
           name: this.options.name,
-          icns: this.options.icns
+          icns: this.options.icns,
+          headless: this.options.headless
         }
       );
     } else {
@@ -82,7 +78,8 @@ export class LinuxServiceManager extends OSServiceManager {
     const script = `systemctl${userCommand} start "${this.options.slug}"`;
     if (this.options.level === 'system') {
       await ScriptRunner.runAsAdmin(script, {
-        name: this.options.name
+        name: this.options.name,
+        headless: this.options.headless
       });
     } else {
       await ScriptRunner.run(script);
@@ -127,7 +124,8 @@ export class LinuxServiceManager extends OSServiceManager {
     if (this.options.level === 'system') {
       await ScriptRunner.runAsAdmin(script
         , {
-          name: this.options.name
+          name: this.options.name,
+          headless: this.options.headless
         });
     } else {
       await ScriptRunner.run(script);
@@ -146,7 +144,8 @@ export class LinuxServiceManager extends OSServiceManager {
 
     if (this.options.level === 'system') {
       await ScriptRunner.runAsAdmin(removeScript, {
-        name: `Uninstallation of ${this.options.name}`
+        name: `Uninstallation of ${this.options.name}`,
+        headless: this.options.headless
       });
     } else {
       await ScriptRunner.run(removeScript);
@@ -218,7 +217,7 @@ export class LinuxServiceManager extends OSServiceManager {
 
   private async prepareLogging() {
     if (this._installationOptions?.logging?.enabled) {
-      this.paths.logRoot = this._installationOptions.logging?.outDir ?? (this.options.level === "system" ? '/var/log/' : join(homedir(), 'log/')) + this.options.name.replace(/\s/g, '');
+      this.paths.logRoot = this._installationOptions.logging?.outDir ?? (this.options.level === 'system' ? '/var/log/' : join(homedir(), 'log/')) + this.options.name.replace(/\s/g, '');
       this.paths.log = join(this.paths.logRoot,
         `${this.label}.log`
       );
@@ -228,19 +227,19 @@ export class LinuxServiceManager extends OSServiceManager {
 
       if (this.options.level === 'user') {
         if (!(await exists(this.paths.logRoot))) {
-          await mkdir(this.paths.logRoot, { recursive: true });
+          await mkdir(this.paths.logRoot, {recursive: true});
           await ScriptRunner.run(
             `chmod 745 ${this.paths.logRoot}`
           );
         }
         if (!(await exists(this.paths.log))) {
-          await writeFile(this.paths.log, '', { encoding: 'utf-8' });
+          await writeFile(this.paths.log, '', {encoding: 'utf-8'});
           await ScriptRunner.run(
             `chmod 745 ${this.paths.log}`
           );
         }
         if (!(await exists(this.paths.errorLog))) {
-          await writeFile(this.paths.errorLog, '', { encoding: 'utf-8' });
+          await writeFile(this.paths.errorLog, '', {encoding: 'utf-8'});
           await ScriptRunner.run(
             `chmod 745 ${this.paths.errorLog}`
           );

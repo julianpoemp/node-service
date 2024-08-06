@@ -3,6 +3,7 @@ export interface OSServiceOptions {
   slug: string;
   level: 'system' | 'user';
   windows?: WindowsOSServiceOptions;
+  headless?: boolean;
   icns?: string;
 }
 
@@ -69,12 +70,16 @@ export abstract class OSServiceManager {
     return this._status;
   }
 
-  protected options?: OSServiceOptions;
+  get options(): OSServiceOptions {
+    return this._options;
+  }
+
+  protected _options?: OSServiceOptions;
   protected _status = OSServiceStatus.not_installed;
   protected _installationOptions?: OSServiceInstallationOptions;
 
   public async initialize(options: OSServiceOptions) {
-    this.options = options;
+    this._options = options;
     await this.updateStatus();
   }
 
