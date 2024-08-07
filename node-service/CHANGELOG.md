@@ -2,6 +2,15 @@
 
 This file was generated using [@jscutlery/semver](https://github.com/jscutlery/semver).
 
+## [0.1.5](https://github.com/julianpoemp/node-service/compare/node-service-0.1.4...node-service-0.1.5) (2024-08-07)
+
+
+### Bug Fixes
+
+* **windows-service:** installation not working if path to winsw config does not exit ([6394471](https://github.com/julianpoemp/node-service/commit/63944718482a20c4bb6dc289f15b91e2df51465f))
+
+
+
 ## [0.1.4](https://github.com/julianpoemp/node-service/compare/node-service-0.1.3...node-service-0.1.4) (2024-08-06)
 
 
