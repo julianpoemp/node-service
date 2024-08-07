@@ -19,23 +19,25 @@ export class WindowsServiceManager extends OSServiceManager {
     try {
       version = await ScriptRunner.run(`${this.winswExePath} --version`);
     } catch (e) {
-      throw new Error(`Can't find winsw.exe binary. Make sure to have winsw v3 installed and referenced to %PATH$ environment variable. Or set the path to winsw.exe in options.windows.winsw.path.`);
+      throw new Error(`Node-Service Error: Can't find winsw.exe binary. Make sure to have winsw v3 installed and referenced to %PATH$ environment variable. Or set the path to winsw.exe in options.windows.winsw.path.`);
     }
 
     if (!version) {
-      throw new Error(`Can't read version information. Make sure that you have winsw v3 installed.`);
+      throw new Error(`Node-Service Error: Can't read version information. Make sure that you have winsw v3 installed.`);
     }
 
     if (!this.options?.windows.pathToWinswConfig) {
-      throw new Error('You have to define a path to a (non)-existing winsw configuration file. Please check options.windows.pathToWinswConfig')
+      throw new Error('Node-Service Error: You have to define a path to a (non)-existing winsw configuration file. Please check options.windows.pathToWinswConfig')
     }
   }
 
   async install(command: string, commandArgs: string[], options: OSServiceInstallationOptions): Promise<void> {
+    if (!this.options.windows?.pathToWinswConfig) {
+      throw new Error('Node-Service Error: Missing config path to winsw config.');
+    }
+
     if (!await exists(this.options.windows?.pathToWinswConfig)) {
       // create new winsw.xml config file
-
-
       await writeFile(this.options.windows?.pathToWinswConfig, this.buildWinsXML(command, commandArgs, options), {
         encoding: 'utf-8'
       });
@@ -52,6 +54,10 @@ export class WindowsServiceManager extends OSServiceManager {
   }
 
   async uninstall(): Promise<void> {
+    if (!this.options.windows?.pathToWinswConfig) {
+      throw new Error('Node-Service Error: Missing config path to winsw config.');
+    }
+
     await ScriptRunner.runAsAdmin(`${this.winswExePath} stop "${this.options.windows?.pathToWinswConfig}" && ${this.winswExePath} uninstall "${this.options.windows?.pathToWinswConfig}"`, {
       name: this.options.name,
       headless: this.options.headless
@@ -60,6 +66,10 @@ export class WindowsServiceManager extends OSServiceManager {
   }
 
   async start(): Promise<void> {
+    if (!this.options.windows?.pathToWinswConfig) {
+      throw new Error('Node-Service Error: Missing config path to winsw config.');
+    }
+
     await ScriptRunner.runAsAdmin(`${this.winswExePath} start ${this.options.windows?.pathToWinswConfig}`, {
       name: this.options.name,
       headless: this.options.headless
@@ -68,6 +78,10 @@ export class WindowsServiceManager extends OSServiceManager {
   }
 
   async stop(): Promise<void> {
+    if (!this.options.windows?.pathToWinswConfig) {
+      throw new Error('Node-Service Error: Missing config path to winsw config.');
+    }
+
     await ScriptRunner.runAsAdmin(`${this.winswExePath} stop ${this.options.windows?.pathToWinswConfig}`, {
       name: this.options.name,
       headless: this.options.headless
@@ -82,28 +96,29 @@ export class WindowsServiceManager extends OSServiceManager {
 
   async updateStatus(): Promise<void> {
     if (this.options.windows?.pathToWinswConfig) {
-      try {
-        const output = await ScriptRunner.run(`${this.winswExePath} status "${this.options.windows?.pathToWinswConfig}"`);
-        const matches = /I?n?[aA]ctive \(([^)]+)\)/g.exec(output);
-        if (matches && matches.length > 0) {
-          switch (matches[1]) {
-            case 'running':
-              this._status = OSServiceStatus.running;
-              break;
-            case 'stopped':
-              this._status = OSServiceStatus.stopped;
-              break;
-            case 'waiting':
-              this._status = OSServiceStatus.waiting;
-              break;
-            default:
-              this._status = OSServiceStatus.unknown;
-          }
-        } else if (output === 'NonExistent\n') {
-          this._status = OSServiceStatus.not_installed;
+      if (!await exists(this.options.windows?.pathToWinswConfig)) {
+        this._status = OSServiceStatus.not_installed;
+        return;
+      }
+
+      const output = await ScriptRunner.run(`${this.winswExePath} status "${this.options.windows?.pathToWinswConfig}"`);
+      const matches = /I?n?[aA]ctive \(([^)]+)\)/g.exec(output);
+      if (matches && matches.length > 0) {
+        switch (matches[1]) {
+          case 'running':
+            this._status = OSServiceStatus.running;
+            break;
+          case 'stopped':
+            this._status = OSServiceStatus.stopped;
+            break;
+          case 'waiting':
+            this._status = OSServiceStatus.waiting;
+            break;
+          default:
+            this._status = OSServiceStatus.unknown;
         }
-      } catch (e) {
-        throw new Error(e);
+      } else if (output === 'NonExistent\n') {
+        this._status = OSServiceStatus.not_installed;
       }
     } else {
       this._status = OSServiceStatus.not_installed;

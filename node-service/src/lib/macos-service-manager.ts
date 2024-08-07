@@ -39,7 +39,7 @@ export class MacOSServiceManager extends OSServiceManager {
     await this.prepareLogging();
 
     if (await this.isInstalled()) {
-      throw new Error(`Can't install service. Service already exists. Unload it via launchctl unload or call manager.stop();`);
+      throw new Error(`Node-Service Error: Can't install service. Service already exists. Unload it via launchctl unload or call manager.stop();`);
     }
 
     const plist = this.buildPlist(options);
