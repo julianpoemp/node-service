@@ -40,5 +40,7 @@
       },
       "exclude": ["demo-e2e/**/*"]
     }
-  ]
+  ],
+  "neverConnectToCloud": true,
+  "analytics": false
 }

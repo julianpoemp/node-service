@@ -1,5 +1,5 @@
 /* eslint-disable */
-export default {
+module.exports = {
   displayName: 'demo-e2e',
   preset: '../jest.preset.js',
   setupFiles: ['<rootDir>/src/test-setup.ts'],
