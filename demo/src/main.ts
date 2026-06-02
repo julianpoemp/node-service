@@ -11,25 +11,27 @@ async function wait(seconds: number) {
 
 async function main() {
   const manager = await initializeOSService({
-    name: 'Hello World Service Example11',
+    name: 'HelloWorld',
     level: 'system',
-    slug: 'hello-world11',
-    headless: true,
-    windows: {
-      pathToWinswConfig: resolve(join("data", "winsw.xml"))
-    }
+    slug: 'hello-world',
+    headless: true
   });
 
-  console.log("UNINSTALL!");
-  await manager.uninstall();
+  if(await manager.isInstalled()) {
+    console.log("UNINSTALL!");
+    await manager.uninstall();
+  } else {
+    console.log("not installed");
+  }
+
 
   if (manager.status === 'not_installed') {
     console.log('Install...');
     const args: string[] = [
-      "node"
+      resolve(join("assets", "hello-world.js"))
     ];
 
-    await manager.install(resolve(join("demo", "src", "assets", "hello-world.js")), args, {
+    await manager.install("node", args, {
       description: "This service just prints 'Hello world' every second.",
       logging: {
         enabled: true
@@ -52,6 +54,8 @@ async function main() {
     console.log('installed!');
     // await manager.start();
   }
+
+  await manager.start();
 
   while (true) {
     console.log(`STATUS: ${manager.status}`);
@@ -85,7 +89,6 @@ async function main() {
     console.log(`STATUS: ${manager.status}`);
     await manager.updateStatus();
     await wait(1);
-    await manager.start();
   }
 }
 

@@ -1,5 +1,5 @@
 import {ChildProcess, exec} from 'child_process';
-import * as SudoPrompt from 'sudo-prompt';
+import * as SudoPrompt from '@vscode/sudo-prompt';
 import * as fs from 'fs';
 import * as os from 'node:os';
 
