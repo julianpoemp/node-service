@@ -2,6 +2,26 @@
 
 This file was generated using [@jscutlery/semver](https://github.com/jscutlery/semver).
 
+# [1.0.0](https://github.com/julianpoemp/node-service/compare/node-service-0.1.5...node-service-1.0.0) (2026-06-02)
+
+
+### deps
+
+* **node-service:** change peer dependency ([98b3630](https://github.com/julianpoemp/node-service/commit/98b3630e9ae425877bb975ece131756f37032cff))
+
+
+### Features
+
+* **node-windows:** replace winsw with servy ([46e1e48](https://github.com/julianpoemp/node-service/commit/46e1e48400fe1c638c014b685695690978680dec))
+
+
+### BREAKING CHANGES
+
+* **node-service:** sudo-prompt was replaced by @vscode/sudo-prompt
+* **node-windows:** Winsw was replaced by servy, so the options related to winsw.
+
+
+
 ## [0.1.5](https://github.com/julianpoemp/node-service/compare/node-service-0.1.4...node-service-0.1.5) (2024-08-07)
 
 
