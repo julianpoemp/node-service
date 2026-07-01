@@ -204,6 +204,12 @@ export class LinuxServiceManager extends OSServiceManager {
 
       for (const key of Object.keys(configObject[attr])) {
         configString += `${key}=${configObject[attr][key]}\n`;
+
+        if (key === "ExecStart" && options.env) {
+          for (const envKey of Object.keys(options.env)) {
+            configString += `Environment='${envKey}=${options.env[envKey]}'\n`;
+          }
+        }
       }
     }
 

@@ -140,7 +140,7 @@ export class MacOSServiceManager extends OSServiceManager {
   }
 
   private buildPlist(options: OSServiceInstallationOptions): string {
-    const plistValue: PlistObject = {
+    let plistValue: PlistObject = {
       'Label': this.label,
       'ProgramArguments': [
         this.command,
@@ -153,6 +153,14 @@ export class MacOSServiceManager extends OSServiceManager {
       'StandardOutPath': options.logging?.enabled ? this.paths.log : undefined,
       'StandardErrorPath': options.logging?.enabled ? this.paths.errorLog : undefined
     };
+
+    if (options.env) {
+      plistValue = {
+        ...plistValue,
+        "EnvironmentVariables": options.env
+      }
+    }
+
     return build(removeEmptyProperties(plistValue));
   }
 
