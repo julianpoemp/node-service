@@ -15,6 +15,7 @@ export interface OSServiceInstallationOptions {
     enabled: boolean;
     outDir?: string;
   }
+  debugging?: boolean;
   macos?: MacOSServiceOptions;
   linux?: LinuxOSServiceOptions;
 }
@@ -47,8 +48,8 @@ export interface LinuxOSServiceOptions {
 }
 
 export interface WindowsOSServiceOptions {
-  pathToWinswExe?: string;
-  pathToWinswConfig?: string;
+  pathToServyCliExe?: string;
+  serviceName?: string;
 }
 
 export enum OSServiceStatus {

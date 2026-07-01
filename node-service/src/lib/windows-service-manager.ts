@@ -1,7 +1,10 @@
-import {exists, ScriptRunner} from './functions';
-import {writeFile} from 'fs/promises';
-import {OSServiceInstallationOptions, OSServiceManager, OSServiceOptions, OSServiceStatus} from './os-service-manager';
-import * as Path from 'node:path';
+import { ScriptRunner } from './functions';
+import {
+  OSServiceInstallationOptions,
+  OSServiceManager,
+  OSServiceOptions,
+  OSServiceStatus
+} from './os-service-manager';
 
 export class WindowsServiceManager extends OSServiceManager {
   override async initialize(options: OSServiceOptions) {
@@ -10,42 +13,61 @@ export class WindowsServiceManager extends OSServiceManager {
     await this.updateStatus();
   }
 
-  private get winswExePath() {
-    return this.options.windows?.pathToWinswExe ?? 'winsw';
+  private get servyCLIExecPath() {
+    return this.options.windows?.pathToServyCliExe ?? 'servy-cli';
+  }
+
+  private get getServiceName() {
+    return this.options.slug;
   }
 
   async checkRequirements() {
     let version = '';
     try {
-      version = await ScriptRunner.run(`${this.winswExePath} --version`);
+      version = await ScriptRunner.run(`${this.servyCLIExecPath} version`);
+      version = /Servy.CLI ([0-9]\.[0-9]\.[0-9])/g.exec(version)[1];
     } catch (e) {
-      throw new Error(`Node-Service Error: Can't find winsw.exe binary. Make sure to have winsw v3 installed and referenced to %PATH$ environment variable. Or set the path to winsw.exe in options.windows.winsw.path.`);
+      throw new Error(`Node-Service Error: Can't find servy-cli.exe binary. Make sure to have servy-cli v8 installed and referenced to %PATH$ environment variable. Or set the path to servy-cli.exe in options.windows.servyCLIExecPath. Download servy here: https://servy-win.github.io/`);
     }
 
     if (!version) {
-      throw new Error(`Node-Service Error: Can't read version information. Make sure that you have winsw v3 installed.`);
-    }
-
-    if (!this.options?.windows.pathToWinswConfig) {
-      throw new Error('Node-Service Error: You have to define a path to a (non)-existing winsw configuration file. Please check options.windows.pathToWinswConfig')
+      throw new Error(`Node-Service Error: Can't read version information. Make sure that you have servy-cli v8 installed.`);
     }
   }
 
   async install(command: string, commandArgs: string[], options: OSServiceInstallationOptions): Promise<void> {
-    if (!this.options.windows?.pathToWinswConfig) {
-      throw new Error('Node-Service Error: Missing config path to winsw config.');
+    const envVars = [];
+    if (options.env && Object.keys(options.env).length > 0) {
+      for (const key of Object.keys(options.env)) {
+        envVars.push(`${key}=${options.env[key].replace(/([=";])/g, '\\$1')}`);
+      }
     }
 
-    if (!await exists(this.options.windows?.pathToWinswConfig)) {
-      // create new winsw.xml config file
-      await writeFile(this.options.windows?.pathToWinswConfig, this.buildWinsXML(command, commandArgs, options), {
-        encoding: 'utf-8'
-      });
+    const installArgs = [
+      `-n "${this.options.slug}"`,
+      `-d "${options.description}"`,
+      `-p "${command}"`,
+      `-q`
+    ];
+
+    if (options.debugging) {
+      installArgs.push(`--debug`);
     }
 
-    const configDir = Path.parse(this.options.windows?.pathToWinswConfig).dir;
-    const configName = Path.parse(this.options.windows?.pathToWinswConfig).base;
-    const script = `cd "${configDir}" && ${this.winswExePath} install ${configName}`;
+    if (options.cwd) {
+      installArgs.push(`--startupDir="${options.cwd}"`);
+    }
+
+    if (envVars.length > 0) {
+      installArgs.push(
+        `--envVars="${envVars.join(';')}"`);
+    }
+
+    if (commandArgs.length > 0) {
+      installArgs.push(`--params="${commandArgs.join(' ').replace(/\\"/g, '\\"')}"`);
+    }
+
+    const script = `${this.servyCLIExecPath} install ${installArgs.join(' ')}`;
     await ScriptRunner.runAsAdmin(script, {
       name: this.options.name,
       headless: this.options.headless
@@ -54,11 +76,7 @@ export class WindowsServiceManager extends OSServiceManager {
   }
 
   async uninstall(): Promise<void> {
-    if (!this.options.windows?.pathToWinswConfig) {
-      throw new Error('Node-Service Error: Missing config path to winsw config.');
-    }
-
-    await ScriptRunner.runAsAdmin(`${this.winswExePath} stop "${this.options.windows?.pathToWinswConfig}" && ${this.winswExePath} uninstall "${this.options.windows?.pathToWinswConfig}"`, {
+    await ScriptRunner.runAsAdmin(`${this.servyCLIExecPath} stop -n ${this.getServiceName} -q && ${this.servyCLIExecPath} uninstall -n ${this.getServiceName} -q`, {
       name: this.options.name,
       headless: this.options.headless
     });
@@ -66,11 +84,7 @@ export class WindowsServiceManager extends OSServiceManager {
   }
 
   async start(): Promise<void> {
-    if (!this.options.windows?.pathToWinswConfig) {
-      throw new Error('Node-Service Error: Missing config path to winsw config.');
-    }
-
-    await ScriptRunner.runAsAdmin(`${this.winswExePath} start ${this.options.windows?.pathToWinswConfig}`, {
+    await ScriptRunner.runAsAdmin(`${this.servyCLIExecPath} start -n ${this.getServiceName} -q`, {
       name: this.options.name,
       headless: this.options.headless
     });
@@ -78,11 +92,7 @@ export class WindowsServiceManager extends OSServiceManager {
   }
 
   async stop(): Promise<void> {
-    if (!this.options.windows?.pathToWinswConfig) {
-      throw new Error('Node-Service Error: Missing config path to winsw config.');
-    }
-
-    await ScriptRunner.runAsAdmin(`${this.winswExePath} stop ${this.options.windows?.pathToWinswConfig}`, {
+    await ScriptRunner.runAsAdmin(`${this.servyCLIExecPath} stop -n ${this.getServiceName} -q`, {
       name: this.options.name,
       headless: this.options.headless
     });
@@ -91,81 +101,42 @@ export class WindowsServiceManager extends OSServiceManager {
 
   async isInstalled(): Promise<boolean> {
     await this.updateStatus();
-    return await exists(this.options?.windows.pathToWinswConfig) && this._status !== OSServiceStatus.not_installed;
+    return this._status !== OSServiceStatus.not_installed;
   }
 
   async updateStatus(): Promise<void> {
-    if (this.options.windows?.pathToWinswConfig) {
-      if (!await exists(this.options.windows?.pathToWinswConfig)) {
+    let output = "";
+
+    try {
+      output = await ScriptRunner.run(`${this.servyCLIExecPath} status -n ${this.getServiceName} -q`);
+    } catch (e) {
+      output = e;
+
+      if (output.indexOf(" was not found on computer") > -1) {
         this._status = OSServiceStatus.not_installed;
         return;
       }
 
-      const output = await ScriptRunner.run(`${this.winswExePath} status "${this.options.windows?.pathToWinswConfig}"`);
-      const matches = /I?n?[aA]ctive \(([^)]+)\)/g.exec(output);
-      if (matches && matches.length > 0) {
-        switch (matches[1]) {
-          case 'running':
-            this._status = OSServiceStatus.running;
-            break;
-          case 'stopped':
-            this._status = OSServiceStatus.stopped;
-            break;
-          case 'waiting':
-            this._status = OSServiceStatus.waiting;
-            break;
-          default:
-            this._status = OSServiceStatus.unknown;
-        }
-      } else if (output === 'NonExistent\n') {
-        this._status = OSServiceStatus.not_installed;
-      }
-    } else {
-      this._status = OSServiceStatus.not_installed;
-    }
-  }
-
-  private buildWinsXML(command: string, commandArgs: string[], installationOptions: OSServiceInstallationOptions) {
-    let winswFileContent = `<service>
-  <id>${this.options.slug}</id>
-  <name>${this.options.name}</name>
-  <description>${installationOptions.description}</description>
-  <executable>${command}</executable>
-  <arguments>${commandArgs.join(' ')}</arguments>`
-
-    if (installationOptions.cwd) {
-      winswFileContent += `
-  <workingdirectory>${installationOptions.cwd}</workingdirectory>`
+      process.exit(1);
     }
 
-    if (installationOptions.env && Object.keys(installationOptions.env).length > 0) {
-      for (const key of Object.keys(installationOptions.env)) {
-        winswFileContent += `
-  <env name="${key}" value="${installationOptions.env[key].replace(/"/g, '"')}" />`;
+    const matches = /Service status for '[^']+': (\w+)/g.exec(output);
+
+    if (matches && matches.length > 0) {
+      switch (matches[1]) {
+        case 'Running':
+          this._status = OSServiceStatus.running;
+          break;
+        case 'Stopped':
+          this._status = OSServiceStatus.stopped;
+          break;
+        case 'Start Pending':
+          this._status = OSServiceStatus.waiting;
+          break;
+        default:
+          this._status = OSServiceStatus.unknown;
       }
     }
-
-    if (installationOptions.logging?.enabled) {
-      if (installationOptions.logging?.outDir) {
-        winswFileContent += `
-  <logpath>${installationOptions.logging?.outDir}</logpath>`;
-      }
-      winswFileContent += `
-  <log mode="roll-by-size">
-  <sizeThreshold>10240</sizeThreshold>
-  <keepFiles>4</keepFiles>`
-
-      winswFileContent += `
-  </log>`
-    } else {
-      winswFileContent += `
-  <log mode="none"></log>`
-    }
-
-    winswFileContent += `
-</service>`
-
-    return winswFileContent;
   }
 
 }
