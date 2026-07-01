@@ -2,6 +2,12 @@
 
 This file was generated using [@jscutlery/semver](https://github.com/jscutlery/semver).
 
+## [0.1.6](https://github.com/julianpoemp/node-service/compare/node-service-0.1.5...node-service-0.1.6) (2026-07-01)
+
+### Bug Fixes
+
+* **node-service:** missing env integration for macos and linux services ([25619ff](https://github.com/julianpoemp/node-service/commit/25619ffbd21f1d7f227176bf428c08f30f950213))
+
 ## [0.1.5](https://github.com/julianpoemp/node-service/compare/node-service-0.1.4...node-service-0.1.5) (2024-08-07)
 
 
