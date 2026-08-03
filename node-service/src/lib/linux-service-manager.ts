@@ -1,9 +1,14 @@
-import {OSServiceInstallationOptions, OSServiceManager, OSServiceOptions, OSServiceStatus} from './os-service-manager';
-import {exists, removeEmptyProperties, ScriptRunner} from './functions';
-import {join} from 'path';
-import {homedir} from 'os';
+import {
+  OSServiceInstallationOptions,
+  OSServiceManager,
+  OSServiceOptions,
+  OSServiceStatus,
+} from './os-service-manager';
+import { exists, removeEmptyProperties, ScriptRunner } from './functions';
+import { join } from 'path';
+import { homedir } from 'os';
 import * as Path from 'node:path';
-import {mkdir, writeFile} from 'fs/promises';
+import { mkdir, writeFile } from 'fs/promises';
 
 export class LinuxServiceManager extends OSServiceManager {
   private paths: {
@@ -28,7 +33,11 @@ export class LinuxServiceManager extends OSServiceManager {
     await this.updateStatus();
   }
 
-  async install(command: string, commandArgs: string[], options: OSServiceInstallationOptions) {
+  async install(
+    command: string,
+    commandArgs: string[],
+    options: OSServiceInstallationOptions
+  ) {
     this.command = Path.resolve(command);
     this.cwd = options.cwd;
     this.commandArgs = commandArgs;
@@ -36,32 +45,45 @@ export class LinuxServiceManager extends OSServiceManager {
     await this.prepareLogging();
 
     if (await this.isInstalled()) {
-      throw new Error(`Node-Service Error: Can't install service. Service already exists. Unload it via launchctl unload or call manager.stop();`);
+      throw new Error(
+        `Node-Service Error: Can't install service. Service already exists. Unload it via launchctl unload or call manager.stop();`
+      );
     }
 
     const configString = this.buildServiceFile(options);
-    if (!await exists(this.paths.root)) {
+    if (!(await exists(this.paths.root))) {
       await mkdir(this.paths.root, {
-        recursive: true
+        recursive: true,
       });
     }
     const userCommand = this.options.level === 'system' ? '' : ' --user';
 
-    const logFolderCreation = options.logging?.enabled ? `&& mkdir -p ${this.paths.logRoot} 2>/dev/null && chmod 745 ${this.paths.logRoot} && touch ${this.paths.log} 2>/dev/null && chmod 745 ${this.paths.log} && touch ${this.paths.errorLog} 2>/dev/null && chmod 745 ${this.paths.errorLog} ` : '';
-    let script = `printf '${configString.replace(/'/g, '"').replace(/\n/g, '\\n')}' > "/tmp/${this.options.slug}.service" `;
+    const logFolderCreation = options.logging?.enabled
+      ? `&& mkdir -p ${this.paths.logRoot} 2>/dev/null && chmod 745 ${this.paths.logRoot} && touch ${this.paths.log} 2>/dev/null && chmod 745 ${this.paths.log} && touch ${this.paths.errorLog} 2>/dev/null && chmod 745 ${this.paths.errorLog} `
+      : '';
+    let script = `printf '${configString
+      .replace(/'/g, '"')
+      .replace(/\n/g, '\\n')}' > "/tmp/${this.options.slug}.service" `;
     script += `${logFolderCreation}`;
     script += `&& mv -f "/tmp/${this.options.slug}.service" "${this.paths.config}" `;
     script += `&& systemctl${userCommand} daemon-reload && `;
     script += `systemctl${userCommand} enable ${this.options.slug}.service`;
 
     if (this.options.level === 'system') {
+      if (this.options.debugging) {
+        console.log(`NODE-SERVICE DEBUG: RUN AS ADMIN`);
+        console.log(`NODE-SERVICE DEBUG: ${script}`);
+      }
       await ScriptRunner.runAsAdmin(script, {
-          name: this.options.name,
-          icns: this.options.icns,
-          headless: this.options.headless
-        }
-      );
+        name: this.options.name,
+        icns: this.options.icns,
+        headless: this.options.headless,
+      });
     } else {
+      if (this.options.debugging) {
+        console.log(`NODE-SERVICE DEBUG: RUN`);
+        console.log(`NODE-SERVICE DEBUG: ${script}`);
+      }
       await ScriptRunner.run(script);
     }
 
@@ -70,18 +92,29 @@ export class LinuxServiceManager extends OSServiceManager {
 
   async isInstalled(): Promise<boolean> {
     await this.updateStatus();
-    return this._status !== OSServiceStatus.not_installed && this._status !== OSServiceStatus.unknown;
+    return (
+      this._status !== OSServiceStatus.not_installed &&
+      this._status !== OSServiceStatus.unknown
+    );
   }
 
   async start(): Promise<void> {
     const userCommand = this.options.level === 'system' ? '' : ' --user';
     const script = `systemctl${userCommand} start "${this.options.slug}"`;
     if (this.options.level === 'system') {
+      if (this.options.debugging) {
+        console.log(`NODE-SERVICE DEBUG: RUN AS ADMIN`);
+        console.log(`NODE-SERVICE DEBUG: ${script}`);
+      }
       await ScriptRunner.runAsAdmin(script, {
         name: this.options.name,
-        headless: this.options.headless
+        headless: this.options.headless,
       });
     } else {
+      if (this.options.debugging) {
+        console.log(`NODE-SERVICE DEBUG: RUN`);
+        console.log(`NODE-SERVICE DEBUG: ${script}`);
+      }
       await ScriptRunner.run(script);
     }
     await this.updateStatus();
@@ -90,7 +123,9 @@ export class LinuxServiceManager extends OSServiceManager {
   async updateStatus(): Promise<void> {
     try {
       const userCommand = this.options.level === 'system' ? '' : ' --user';
-      const output = await ScriptRunner.run(`systemctl${userCommand} status ${this.options.slug}.service`);
+      const output = await ScriptRunner.run(
+        `systemctl${userCommand} status ${this.options.slug}.service`
+      );
       const matches = / *Active: *([^ (]+) \(([^(]+)\)/g.exec(output);
 
       if (matches && matches.length > 0) {
@@ -122,12 +157,19 @@ export class LinuxServiceManager extends OSServiceManager {
     const userCommand = this.options.level === 'system' ? '' : ' --user';
     const script = `systemctl${userCommand} stop '${this.options.slug}'`;
     if (this.options.level === 'system') {
-      await ScriptRunner.runAsAdmin(script
-        , {
-          name: this.options.name,
-          headless: this.options.headless
-        });
+      if (this.options.debugging) {
+        console.log(`NODE-SERVICE DEBUG: RUN AS ADMIN`);
+        console.log(`NODE-SERVICE DEBUG: ${script}`);
+      }
+      await ScriptRunner.runAsAdmin(script, {
+        name: this.options.name,
+        headless: this.options.headless,
+      });
     } else {
+      if (this.options.debugging) {
+        console.log(`NODE-SERVICE DEBUG: RUN`);
+        console.log(`NODE-SERVICE DEBUG: ${script}`);
+      }
       await ScriptRunner.run(script);
     }
     await this.updateStatus();
@@ -137,31 +179,44 @@ export class LinuxServiceManager extends OSServiceManager {
     const userCommand = this.options.level === 'system' ? '' : ' --user';
     let removeScript = `systemctl${userCommand} stop ${this.options.slug} && systemctl${userCommand} disable ${this.options.slug} && rm -f '${this.paths.config}' && systemctl${userCommand} daemon-reload`;
 
-
-    if (this._installationOptions?.logging?.enabled && this.paths.logRoot !== '/var/log/' && this.paths.logRoot !== join(homedir(), '/log/')) {
+    if (
+      this._installationOptions?.logging?.enabled &&
+      this.paths.logRoot !== '/var/log/' &&
+      this.paths.logRoot !== join(homedir(), '/log/')
+    ) {
       removeScript += ` && rm -rf '${this.paths.logRoot}'`;
     }
 
     if (this.options.level === 'system') {
+      if (this.options.debugging) {
+        console.log(`NODE-SERVICE DEBUG: RUN AS ADMIN`);
+        console.log(`NODE-SERVICE DEBUG: ${removeScript}`);
+      }
       await ScriptRunner.runAsAdmin(removeScript, {
         name: `Uninstallation of ${this.options.name}`,
-        headless: this.options.headless
+        headless: this.options.headless,
       });
     } else {
+      if (this.options.debugging) {
+        console.log(`NODE-SERVICE DEBUG: RUN`);
+        console.log(`NODE-SERVICE DEBUG: ${removeScript}`);
+      }
       await ScriptRunner.run(removeScript);
     }
     await this.updateStatus();
   }
 
   private buildServiceFile(options: OSServiceInstallationOptions): string {
-    const command = `${this.command}${this.commandArgs ? ` ${this.commandArgs.join(' ')}` : ''}`;
+    const command = `${this.command}${
+      this.commandArgs ? ` ${this.commandArgs.join(' ')}` : ''
+    }`;
     const configObject: {
       Unit: {
         Description: string;
         Before: string;
         After: string;
         StartLimitIntervalSec: number;
-      },
+      };
       Service: {
         Type: string;
         Restart: string;
@@ -171,31 +226,39 @@ export class LinuxServiceManager extends OSServiceManager {
         User: string;
         WorkingDirectory: string;
         ExecStart: string;
-      },
+      };
       Install: {
         WantedBy: string;
-      }
+      };
     } = removeEmptyProperties({
       Unit: {
         Description: options.description,
         After: options.linux?.Unit?.After,
         Before: options.linux?.Unit?.Before,
-        StartLimitIntervalSec: options.linux?.Unit?.StartLimitIntervalSync
+        StartLimitIntervalSec: options.linux?.Unit?.StartLimitIntervalSync,
       },
       Service: {
         Type: options.linux?.Service?.Type,
         Restart: options.linux?.Service?.Restart,
         RestartSec: options.linux?.Service?.RestartSec,
         StandardOutput: this.paths.log ? `file:${this.paths.log}` : undefined,
-        StandardError: this.paths.errorLog ? `file:${this.paths.errorLog}` : undefined,
+        StandardError: this.paths.errorLog
+          ? `file:${this.paths.errorLog}`
+          : undefined,
         User: options.linux?.Service?.User,
         WorkingDirectory: this.cwd,
-        ExecStart: command
+        ExecStart: command,
       },
       Install: {
-        WantedBy: options.linux?.Install?.WantedBy
-      }
+        WantedBy: options.linux?.Install?.WantedBy,
+      },
     });
+
+
+    if (this.options.debugging) {
+      console.log(`NODE-SERVICE DEBUG: Build service file from object:`);
+      console.log(`NODE-SERVICE DEBUG: ${configObject}`);
+    }
 
     let configString = ``;
 
@@ -205,7 +268,7 @@ export class LinuxServiceManager extends OSServiceManager {
       for (const key of Object.keys(configObject[attr])) {
         configString += `${key}=${configObject[attr][key]}\n`;
 
-        if (key === "ExecStart" && options.env) {
+        if (key === 'ExecStart' && options.env) {
           for (const envKey of Object.keys(options.env)) {
             configString += `Environment='${envKey}=${options.env[envKey]}'\n`;
           }
@@ -217,38 +280,35 @@ export class LinuxServiceManager extends OSServiceManager {
   }
 
   private setPaths() {
-    this.paths.root = this.options.level === 'system' ? '/etc/systemd/system/' : join(homedir(), '.config/systemd/user/');
+    this.paths.root =
+      this.options.level === 'system'
+        ? '/etc/systemd/system/'
+        : join(homedir(), '.config/systemd/user/');
     this.paths.config = join(this.paths.root, `${this.options.slug}.service`);
   }
 
   private async prepareLogging() {
     if (this._installationOptions?.logging?.enabled) {
-      this.paths.logRoot = this._installationOptions.logging?.outDir ?? (this.options.level === 'system' ? '/var/log/' : join(homedir(), 'log/')) + this.options.name.replace(/\s/g, '');
-      this.paths.log = join(this.paths.logRoot,
-        `${this.label}.log`
-      );
-      this.paths.errorLog = join(this.paths.logRoot,
-        `${this.label}_error.log`
-      );
+      this.paths.logRoot =
+        this._installationOptions.logging?.outDir ??
+        (this.options.level === 'system'
+          ? '/var/log/'
+          : join(homedir(), 'log/')) + this.options.name.replace(/\s/g, '');
+      this.paths.log = join(this.paths.logRoot, `${this.label}.log`);
+      this.paths.errorLog = join(this.paths.logRoot, `${this.label}_error.log`);
 
       if (this.options.level === 'user') {
         if (!(await exists(this.paths.logRoot))) {
-          await mkdir(this.paths.logRoot, {recursive: true});
-          await ScriptRunner.run(
-            `chmod 745 ${this.paths.logRoot}`
-          );
+          await mkdir(this.paths.logRoot, { recursive: true });
+          await ScriptRunner.run(`chmod 745 ${this.paths.logRoot}`);
         }
         if (!(await exists(this.paths.log))) {
-          await writeFile(this.paths.log, '', {encoding: 'utf-8'});
-          await ScriptRunner.run(
-            `chmod 745 ${this.paths.log}`
-          );
+          await writeFile(this.paths.log, '', { encoding: 'utf-8' });
+          await ScriptRunner.run(`chmod 745 ${this.paths.log}`);
         }
         if (!(await exists(this.paths.errorLog))) {
-          await writeFile(this.paths.errorLog, '', {encoding: 'utf-8'});
-          await ScriptRunner.run(
-            `chmod 745 ${this.paths.errorLog}`
-          );
+          await writeFile(this.paths.errorLog, '', { encoding: 'utf-8' });
+          await ScriptRunner.run(`chmod 745 ${this.paths.errorLog}`);
         }
       }
     }

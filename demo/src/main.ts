@@ -1,11 +1,11 @@
-import {initializeOSService} from 'node-service';
-import {join, resolve} from 'path';
+import { initializeOSService } from 'node-service';
+import { join, resolve } from 'path';
 
 async function wait(seconds: number) {
   return new Promise<void>((resolve) => {
     setTimeout(() => {
       resolve();
-    }, 1000 * seconds)
+    }, 1000 * seconds);
   });
 }
 
@@ -14,42 +14,42 @@ async function main() {
     name: 'HelloWorld',
     level: 'system',
     slug: 'hello-world',
-    headless: true
+    headless: false,
+    debugging: true
   });
 
-  if(await manager.isInstalled()) {
-    console.log("UNINSTALL!");
+  if (await manager.isInstalled()) {
+    console.log('UNINSTALL!');
     await manager.uninstall();
   } else {
-    console.log("not installed");
+    console.log('not installed');
   }
-
 
   if (manager.status === 'not_installed') {
     console.log('Install...');
     const args: string[] = [
-      resolve(join("assets", "hello-world.js"))
+      resolve(join('demo', 'src', 'assets', 'hello-world.js')),
     ];
 
-    await manager.install("node", args, {
+    await manager.install('/usr/local/bin/node', args, {
       description: "This service just prints 'Hello world' every second.",
       logging: {
-        enabled: true
+        enabled: true,
       },
       linux: {
         Unit: {
-          After: "network.target",
-          StartLimitIntervalSync: 0
+          After: 'network.target',
+          StartLimitIntervalSync: 0,
         },
         Service: {
-          Type: "simple",
-          Restart: "always",
-          RestartSec: 5
+          Type: 'simple',
+          Restart: 'always',
+          RestartSec: 5,
         },
         Install: {
-          WantedBy: "multi-user.target"
-        }
-      }
+          WantedBy: 'multi-user.target',
+        },
+      },
     });
     console.log('installed!');
     // await manager.start();
@@ -73,6 +73,7 @@ async function main() {
     console.log(`STATUS: ${manager.status}`);
     await manager.updateStatus();
     await wait(1);
+    console.log('STOP SERVICE');
     await manager.stop();
     console.log(`STATUS: ${manager.status}`);
     await manager.updateStatus();
@@ -89,9 +90,11 @@ async function main() {
     console.log(`STATUS: ${manager.status}`);
     await manager.updateStatus();
     await wait(1);
+    await manager.start();
+    console.log('START SERVICE');
   }
 }
 
-main().catch((e)=>{
+main().catch((e) => {
   console.log(e?.message ?? e);
-})
+});

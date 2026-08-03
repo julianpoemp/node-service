@@ -4,6 +4,7 @@ export interface OSServiceOptions {
   level: 'system' | 'user';
   windows?: WindowsOSServiceOptions;
   headless?: boolean;
+  debugging?: boolean;
   icns?: string;
 }
 
@@ -14,8 +15,7 @@ export interface OSServiceInstallationOptions {
   logging?: {
     enabled: boolean;
     outDir?: string;
-  }
-  debugging?: boolean;
+  };
   macos?: MacOSServiceOptions;
   linux?: LinuxOSServiceOptions;
 }
@@ -31,7 +31,7 @@ export interface LinuxOSServiceOptions {
     Before?: string;
     After?: string;
     StartLimitIntervalSync?: number;
-  },
+  };
   Service?: {
     Type?: string;
     Restart?: string;
@@ -41,10 +41,10 @@ export interface LinuxOSServiceOptions {
     User?: string;
     WorkingDirectory?: string;
     ExecStart?: string;
-  },
+  };
   Install: {
     WantedBy?: string;
-  }
+  };
 }
 
 export interface WindowsOSServiceOptions {
@@ -59,7 +59,7 @@ export enum OSServiceStatus {
   'waiting' = 'waiting',
   'running' = 'running',
   'stopped' = 'stopped',
-  'failed' = 'failed'
+  'failed' = 'failed',
 }
 
 export abstract class OSServiceManager {
@@ -84,7 +84,11 @@ export abstract class OSServiceManager {
     await this.updateStatus();
   }
 
-  abstract install(command: string, commandArgs: string[], options: OSServiceInstallationOptions): Promise<void>;
+  abstract install(
+    command: string,
+    commandArgs: string[],
+    options: OSServiceInstallationOptions
+  ): Promise<void>;
 
   abstract uninstall(): Promise<void>;
 

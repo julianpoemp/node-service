@@ -1,4 +1,4 @@
-import {ChildProcess, exec} from 'child_process';
+import { ChildProcess, exec } from 'child_process';
 import * as SudoPrompt from '@vscode/sudo-prompt';
 import * as fs from 'fs';
 import * as os from 'node:os';
@@ -17,7 +17,7 @@ export function removeEmptyProperties<T>(
   } = {
     removeEmptyStrings: true,
     removeNull: true,
-    removeUndefined: true
+    removeUndefined: true,
   }
 ): T {
   if (Array.isArray(obj)) {
@@ -69,27 +69,33 @@ export class ScriptRunnerOptions {
 
   constructor(partial?: Partial<ScriptRunnerOptions>) {
     Object.assign(this, {
-      ...(partial ?? {})
+      ...(partial ?? {}),
     });
   }
 }
 
 export class ScriptRunner {
-  public static runAsAdmin(command: string, options: {
-    name?: string,
-    headless?: boolean,
-    icns?: string,
-    env?: { [key: string]: string }
-  }): Promise<any> {
+  public static runAsAdmin(
+    command: string,
+    options: {
+      name?: string;
+      headless?: boolean;
+      icns?: string;
+      env?: { [key: string]: string };
+    }
+  ): Promise<any> {
     if (os.platform() === 'win32') {
       options = {
         ...(options ?? {}),
-        headless: false
+        headless: false,
       };
     }
 
     if (options?.headless) {
-      return ScriptRunner.run(`sudo -- sh -c '${command.replace(/'/g, '"')}'`, options);
+      return ScriptRunner.run(
+        `sudo -- sh -c '${command.replace(/'/g, '"')}'`,
+        options
+      );
     } else {
       return new Promise<void>((resolve, reject) => {
         SudoPrompt.exec(command, options, (error, stdout, stderr) => {
@@ -103,8 +109,9 @@ export class ScriptRunner {
   public static async run(
     scriptPath: string,
     options: Partial<ScriptRunnerOptions> = new ScriptRunnerOptions(),
-    processCreatedCallback: (process: ChildProcess) => void = (process: ChildProcess) => {
-    }
+    processCreatedCallback: (process: ChildProcess) => void = (
+      process: ChildProcess
+    ) => {}
   ) {
     return new Promise<string>((resolve, reject) => {
       options = new ScriptRunnerOptions(options);
@@ -112,14 +119,13 @@ export class ScriptRunner {
       let error = '';
 
       const childProcess = exec(scriptPath, {
-        env: {...process.env, ...options.env}
+        env: { ...process.env, ...options.env },
       });
 
       let pipeLine;
       if (childProcess) {
         processCreatedCallback(childProcess);
-        childProcess.stdin.on('data', (data) => {
-        }); // hack to allow inputs to child
+        childProcess.stdin.on('data', (data) => {}); // hack to allow inputs to child
 
         childProcess.stdout.on('data', (data) => {
           output += data;
@@ -155,13 +161,12 @@ export class ScriptRunner {
             resolve(output);
           }
         });
-        childProcess.stdin.on('data', (data) => {
-        }); // hack to allow inputs to child
+        childProcess.stdin.on('data', (data) => {}); // hack to allow inputs to child
       } else {
         if (pipeLine) {
           pipeLine.destroy();
         }
-        reject('Can\'t run script.');
+        reject("Can't run script.");
       }
     });
   }
