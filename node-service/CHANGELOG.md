@@ -2,6 +2,12 @@
 
 This file was generated using [@jscutlery/semver](https://github.com/jscutlery/semver).
 
+# [1.1.0](https://github.com/julianpoemp/node-service/compare/node-service-1.0.1...node-service-1.1.0) (2026-08-03)
+
+### Features
+
+* **node-service:** extended debugging mode ([7b3dada](https://github.com/julianpoemp/node-service/commit/7b3dada6562340793359adebd5969fe89c127e16))
+
 ## [1.0.1](https://github.com/julianpoemp/node-service/compare/node-service-1.0.0...node-service-1.0.1) (2026-07-01)
 
 
