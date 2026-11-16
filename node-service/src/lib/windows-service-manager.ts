@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { ScriptRunner, ScriptRunnerError } from './functions';
+import { exists, ScriptRunner, ScriptRunnerError } from './functions';
 import {
   OSServiceInstallationOptions,
   OSServiceManager,
@@ -8,7 +8,7 @@ import {
 } from './os-service-manager';
 
 /**
- * minimum major version of servy-cli
+ * minimum major version of servy-cli (documentation only, the version can't be read without admin privileges)
  */
 const SERVY_MIN_MAJOR_VERSION = 8;
 /**
@@ -36,13 +36,6 @@ export function parseScQueryState(output: string): OSServiceStatus {
     default:
       return OSServiceStatus.unknown;
   }
-}
-
-/**
- * Reads the version from the output of `servy-cli version`, e.g. "Servy.CLI 8.7.0".
- */
-export function parseServyVersion(output: string): string | undefined {
-  return /Servy\.CLI\s+v?(\d+(?:\.\d+)*)/i.exec(output)?.[1];
 }
 
 /**
@@ -75,35 +68,34 @@ export class WindowsServiceManager extends OSServiceManager {
   }
 
   /**
-   * Checks if servy-cli (v8 or newer) can be executed. The result is cached.
+   * Checks if servy-cli exists. The result is cached.
+   *
+   * servy-cli isn't executed here: it creates a key in C:\\ProgramData\\Servy\\security on every start and fails
+   * without administrator privileges, even for `servy-cli version`. It only runs in the elevated install/uninstall/
+   * start/stop scripts.
    */
   async checkRequirements() {
     if (this.requirementsChecked) {
       return;
     }
 
-    let output = '';
-    try {
-      output = await ScriptRunner.run(`"${this.servyCLIExecPath}" version`);
-    } catch (e) {
-      throw new Error(
-        `Node-Service Error: Can't run servy-cli (${this.servyCLIExecPath}). Make sure to have servy-cli v${SERVY_MIN_MAJOR_VERSION} installed and referenced in the %PATH% environment variable or set the path to servy-cli.exe in options.windows.pathToServyCliExe. Download servy here: https://servy-win.github.io/\n${
-          (e as Error)?.message ?? e
-        }`
+    const configuredPath = this.options.windows?.pathToServyCliExe;
+    const notFound = (details: string) =>
+      new Error(
+        `Node-Service Error: servy-cli not found (${details}). Make sure to have servy-cli v${SERVY_MIN_MAJOR_VERSION} or newer installed and referenced in the %PATH% environment variable or set the path to servy-cli.exe in options.windows.pathToServyCliExe. Download servy here: https://servy-win.github.io/`
       );
-    }
 
-    const version = parseServyVersion(output);
-    if (!version) {
-      throw new Error(
-        `Node-Service Error: Can't read the version of servy-cli. Make sure that you have servy-cli v${SERVY_MIN_MAJOR_VERSION} installed. Output: ${output}`
-      );
-    }
-
-    if (parseInt(version.split('.')[0], 10) < SERVY_MIN_MAJOR_VERSION) {
-      throw new Error(
-        `Node-Service Error: servy-cli v${version} is too old. Install servy-cli v${SERVY_MIN_MAJOR_VERSION} or newer.`
-      );
+    if (configuredPath) {
+      if (!(await exists(configuredPath))) {
+        throw notFound(configuredPath);
+      }
+    } else {
+      try {
+        // where.exe only searches %PATH%, it doesn't start servy-cli
+        await ScriptRunner.run('where servy-cli');
+      } catch {
+        throw notFound('not in %PATH%');
+      }
     }
 
     this.requirementsChecked = true;

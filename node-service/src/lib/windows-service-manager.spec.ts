@@ -1,5 +1,5 @@
 import { OSServiceStatus } from './os-service-manager';
-import { escapeServyEnvValue, parseScQueryState, parseServyVersion, WindowsServiceManager } from './windows-service-manager';
+import { escapeServyEnvValue, parseScQueryState, WindowsServiceManager } from './windows-service-manager';
 
 describe('windows', () => {
   const scQuery = (state: string) => `
@@ -20,13 +20,6 @@ SERVICE_NAME: ocb-service
   it('parseScQueryState returns unknown for unexpected output', () => {
     expect(parseScQueryState('')).toBe(OSServiceStatus.unknown);
     expect(parseScQueryState('[SC] OpenService FAILED 5:\n\nAccess is denied.')).toBe(OSServiceStatus.unknown);
-  });
-
-  it('parseServyVersion', () => {
-    expect(parseServyVersion('Servy.CLI 8.7.0')).toBe('8.7.0');
-    expect(parseServyVersion('Servy.CLI 8.10.1\r\n')).toBe('8.10.1');
-    expect(parseServyVersion('Servy.CLI v8.7')).toBe('8.7');
-    expect(parseServyVersion('something else')).toBeUndefined();
   });
 
   it('escapeServyEnvValue escapes backslashes of named pipes and paths', () => {
@@ -58,5 +51,25 @@ describe('logger option', () => {
     const manager = new WindowsServiceManager();
     await manager.initialize({ name: 'Test', slug: 'x', level: 'user', logger: (message) => messages.push(message) });
     expect(messages).toEqual([]);
+  });
+});
+
+describe('checkRequirements', () => {
+  it("doesn't execute servy-cli, a missing configured path is reported", async () => {
+    const manager = new WindowsServiceManager();
+    await manager.initialize({
+      name: 'Test',
+      slug: 'x',
+      level: 'system',
+      windows: { pathToServyCliExe: '/does/not/exist/servy-cli.exe' },
+    });
+    await expect(manager.checkRequirements()).rejects.toThrow('servy-cli not found (/does/not/exist/servy-cli.exe)');
+  });
+
+  it('accepts an existing configured path without running it', async () => {
+    const manager = new WindowsServiceManager();
+    // any existing file - executing it would fail
+    await manager.initialize({ name: 'Test', slug: 'x', level: 'system', windows: { pathToServyCliExe: __filename } });
+    await expect(manager.checkRequirements()).resolves.toBeUndefined();
   });
 });

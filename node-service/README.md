@@ -23,7 +23,8 @@ This project is in an early development stage. There may be bugs or missing feat
 
 - Windows: [servy-cli](https://servy-win.github.io/) v8 or newer. Add servy-cli.exe to %PATH% or set the path in
   `options.windows.pathToServyCliExe`. servy-cli is only needed to install, uninstall, start and stop a service - the
-  status is read via `sc.exe`.
+  status is read via `sc.exe`. servy-cli needs administrator privileges for every call, node-service only checks that
+  it exists and runs it in the elevated scripts.
 - MacOS: Make sure, that the plist package is installed: `npm install plist`
 
 ## Windows notes
