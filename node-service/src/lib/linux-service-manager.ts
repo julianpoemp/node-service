@@ -32,6 +32,34 @@ export function parseSystemctlState(output: string): OSServiceStatus | undefined
   }
 }
 
+/**
+ * Escapes systemd specifiers (`%n`, `%h`, …) in a unit file value.
+ */
+export function escapeSystemdSpecifiers(value: string): string {
+  return `${value}`.replace(/%/g, '%%');
+}
+
+/**
+ * Quotes one word of ExecStart: paths and arguments with spaces, quotes, backslashes, `%` or `$` stay one argument
+ * and arrive unchanged (systemd would otherwise expand specifiers and environment variables).
+ */
+export function quoteSystemdExecArg(value: string): string {
+  const escaped = escapeSystemdSpecifiers(`${value}`.replace(/\\/g, '\\\\').replace(/"/g, '\\"')).replace(/\$/g, '$$$$');
+  return `"${escaped}"`;
+}
+
+export function buildSystemdExecStart(command: string, args: string[]): string {
+  return [command, ...args].map(quoteSystemdExecArg).join(' ');
+}
+
+/**
+ * `Environment="KEY=value"` with quotes, backslashes and specifiers escaped. Environment= doesn't expand `$`.
+ */
+export function buildSystemdEnvironment(key: string, value: unknown): string {
+  const escaped = escapeSystemdSpecifiers(`${key}=${value}`.replace(/\\/g, '\\\\').replace(/"/g, '\\"'));
+  return `Environment="${escaped}"`;
+}
+
 export class LinuxServiceManager extends OSServiceManager {
   private paths: {
     root?: string;
@@ -218,9 +246,7 @@ export class LinuxServiceManager extends OSServiceManager {
   }
 
   private buildServiceFile(options: OSServiceInstallationOptions): string {
-    const command = `${this.command}${
-      this.commandArgs ? ` ${this.commandArgs.join(' ')}` : ''
-    }`;
+    const command = buildSystemdExecStart(this.command, this.commandArgs ?? []);
     const configObject: {
       Unit: {
         Description: string;
@@ -252,12 +278,14 @@ export class LinuxServiceManager extends OSServiceManager {
         Type: options.linux?.Service?.Type,
         Restart: options.linux?.Service?.Restart,
         RestartSec: options.linux?.Service?.RestartSec,
-        StandardOutput: this.paths.log ? `file:${this.paths.log}` : undefined,
+        StandardOutput: this.paths.log
+          ? `file:${escapeSystemdSpecifiers(this.paths.log)}`
+          : undefined,
         StandardError: this.paths.errorLog
-          ? `file:${this.paths.errorLog}`
+          ? `file:${escapeSystemdSpecifiers(this.paths.errorLog)}`
           : undefined,
         User: options.linux?.Service?.User,
-        WorkingDirectory: this.cwd,
+        WorkingDirectory: this.cwd ? escapeSystemdSpecifiers(this.cwd) : undefined,
         ExecStart: command,
       },
       Install: {
@@ -281,7 +309,7 @@ export class LinuxServiceManager extends OSServiceManager {
 
         if (key === 'ExecStart' && options.env) {
           for (const envKey of Object.keys(options.env)) {
-            configString += `Environment='${envKey}=${options.env[envKey]}'\n`;
+            configString += `${buildSystemdEnvironment(envKey, options.env[envKey])}\n`;
           }
         }
       }
