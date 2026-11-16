@@ -5,13 +5,16 @@
   "implicitDependencies": ["demo"],
   "targets": {
     "e2e": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/{e2eProjectRoot}"],
+      "outputs": [
+        "{workspaceRoot}/coverage/{e2eProjectRoot}",
+        "{workspaceRoot}/coverage/demo-e2e"
+      ],
+      "dependsOn": ["demo:build"],
       "options": {
-        "jestConfig": "demo-e2e/jest.config.ts",
+        "cwd": "{workspaceRoot}",
+        "config": "demo-e2e/jest.config.ts",
         "passWithNoTests": true
-      },
-      "dependsOn": ["demo:build"]
+      }
     }
   }
 }

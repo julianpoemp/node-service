@@ -2,6 +2,18 @@
 
 This file was generated using [@jscutlery/semver](https://github.com/jscutlery/semver).
 
+# [1.2.0](https://github.com/julianpoemp/node-service/compare/node-service-1.1.0...node-service-1.2.0) (2026-11-16)
+
+### Bug Fixes
+
+* **node-service:** quote ExecStart and Environment in linux unit files ([f912a9d](https://github.com/julianpoemp/node-service/commit/f912a9d45d05b25491415985bc938af684ec5a51))
+* **node-service:** reliable service status without process.exit ([09a2c74](https://github.com/julianpoemp/node-service/commit/09a2c74249a9f6ad639766bffa3fe5e41ab5d612))
+* **node-service:** write service files directly instead of printf ([52586b0](https://github.com/julianpoemp/node-service/commit/52586b0f5420779811f1a90d6a18abff3fa4769a))
+
+### Features
+
+* **node-service:** logger option for debug output ([adfb10f](https://github.com/julianpoemp/node-service/commit/adfb10fcf16fac60b1424c094273e88ec054a473))
+
 # [1.1.0](https://github.com/julianpoemp/node-service/compare/node-service-1.0.1...node-service-1.1.0) (2026-08-03)
 
 ### Features

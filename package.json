@@ -17,13 +17,13 @@
     "@commitlint/config-angular": "^18.0.0",
     "@eslint/eslintrc": "^3.0.0",
     "@jscutlery/semver": "^7.1.0",
-    "@nx/esbuild": "23.1.1",
-    "@nx/eslint": "23.1.1",
-    "@nx/eslint-plugin": "23.1.1",
-    "@nx/jest": "23.1.1",
-    "@nx/js": "23.1.1",
-    "@nx/node": "23.1.1",
-    "@nx/workspace": "23.1.1",
+    "@nx/esbuild": "24.0.6",
+    "@nx/eslint": "24.0.6",
+    "@nx/eslint-plugin": "24.0.6",
+    "@nx/jest": "24.0.6",
+    "@nx/js": "24.0.6",
+    "@nx/node": "24.0.6",
+    "@nx/workspace": "24.0.6",
     "@swc-node/register": "1.11.1",
     "@swc/core": "1.15.8",
     "@swc/helpers": "0.5.23",
@@ -40,7 +40,7 @@
     "jest-environment-node": "^29.4.1",
     "jest-util": "30.0.5",
     "ngx-deploy-npm": "9.2.1",
-    "nx": "23.1.1",
+    "nx": "24.0.6",
     "prettier": "^3.9.6",
     "ts-jest": "29.4.9",
     "ts-node": "10.9.1",
@@ -53,5 +53,8 @@
     "handlebars": "^4.7.8",
     "plist": "^3.1.0",
     "tslib": "^2.3.0"
+  },
+  "overrides": {
+    "@nx/devkit": "24.0.6"
   }
 }

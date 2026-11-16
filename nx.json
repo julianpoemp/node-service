@@ -39,11 +39,21 @@
         "targetName": "test"
       },
       "exclude": ["demo-e2e/**/*"]
+    },
+    {
+      "plugin": "@nx/jest/plugin",
+      "options": {
+        "targetName": "e2e"
+      },
+      "include": ["demo-e2e/**/*"]
     }
   ],
   "neverConnectToCloud": true,
   "analytics": false,
   "migrate": {
     "agentic": false
+  },
+  "affected": {
+    "legacy": true
   }
 }
