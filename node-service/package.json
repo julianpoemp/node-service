@@ -4,6 +4,10 @@
   "peerDependencies": {
     "@vscode/sudo-prompt": "^9.3.2"
   },
+  "dependencies": {
+    "plist": "^3.1.0",
+    "tslib": "^2.3.0"
+  },
   "description": "This NodeJS library allows to easily install and control OS services on Windows, MacOS and Linux using shell commands. Uses sudo-prompt if admin privileges are needed.",
   "private": false,
   "author": "Julian Poemp",
