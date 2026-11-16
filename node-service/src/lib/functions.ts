@@ -1,7 +1,9 @@
 import { ChildProcess, exec } from 'child_process';
 import * as SudoPrompt from '@vscode/sudo-prompt';
 import * as fs from 'fs';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import * as os from 'node:os';
+import { join } from 'node:path';
 
 /**
  * removes all empty values from an given object.
@@ -120,10 +122,7 @@ export class ScriptRunner {
     }
 
     if (options?.headless) {
-      return ScriptRunner.run(
-        `sudo -- sh -c '${command.replace(/'/g, '"')}'`,
-        options
-      );
+      return ScriptRunner.run(`sudo -- sh -c ${shellQuote(command)}`, options);
     } else {
       return new Promise<void>((resolve, reject) => {
         SudoPrompt.exec(command, options, (error, stdout, stderr) => {
@@ -245,4 +244,40 @@ export async function exists(path: string) {
       else resolve(true);
     });
   });
+}
+
+/**
+ * Quotes a value for POSIX shells (single quotes, embedded single quotes escaped).
+ */
+export function shellQuote(value: string): string {
+  return `'${`${value}`.replace(/'/g, `'\\''`)}'`;
+}
+
+/**
+ * Writes content to a file in a new temporary folder. Service files are written this way and moved to their target
+ * by the (privileged) install script - no escaping of the file content in shell commands needed.
+ */
+export async function writeTempFile(
+  fileName: string,
+  content: string
+): Promise<{ path: string; cleanup: () => Promise<void> }> {
+  const folder = await mkdtemp(join(os.tmpdir(), 'node-service-'));
+  const path = join(folder, fileName);
+  await writeFile(path, content, { encoding: 'utf-8', mode: 0o644 });
+  return {
+    path,
+    cleanup: () => rm(folder, { recursive: true, force: true }),
+  };
+}
+
+/**
+ * Shell commands that create the log folder and files (readable for the service).
+ */
+export function buildLogFolderCommands(logRoot: string, log: string, errorLog: string): string[] {
+  return [
+    `mkdir -p ${shellQuote(logRoot)}`,
+    `chmod 745 ${shellQuote(logRoot)}`,
+    `touch ${shellQuote(log)} ${shellQuote(errorLog)}`,
+    `chmod 745 ${shellQuote(log)} ${shellQuote(errorLog)}`,
+  ];
 }

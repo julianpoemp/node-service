@@ -4,7 +4,7 @@ import {
   OSServiceOptions,
   OSServiceStatus,
 } from './os-service-manager';
-import { exists, removeEmptyProperties, ScriptRunner, ScriptRunnerError } from './functions';
+import { exists, removeEmptyProperties, ScriptRunner, ScriptRunnerError, shellQuote, writeTempFile, buildLogFolderCommands } from './functions';
 import { join } from 'path';
 import { homedir } from 'os';
 import * as Path from 'node:path';
@@ -80,33 +80,39 @@ export class LinuxServiceManager extends OSServiceManager {
     }
     const userCommand = this.options.level === 'system' ? '' : ' --user';
 
-    const logFolderCreation = options.logging?.enabled
-      ? `&& mkdir -p ${this.paths.logRoot} 2>/dev/null && chmod 745 ${this.paths.logRoot} && touch ${this.paths.log} 2>/dev/null && chmod 745 ${this.paths.log} && touch ${this.paths.errorLog} 2>/dev/null && chmod 745 ${this.paths.errorLog} `
-      : '';
-    let script = `printf '${configString
-      .replace(/'/g, '"')
-      .replace(/\n/g, '\\n')}' > "/tmp/${this.options.slug}.service" `;
-    script += `${logFolderCreation}`;
-    script += `&& mv -f "/tmp/${this.options.slug}.service" "${this.paths.config}" `;
-    script += `&& systemctl${userCommand} daemon-reload && `;
-    script += `systemctl${userCommand} enable ${this.options.slug}.service`;
+    // the unit file is written as is and copied by the script - no shell escaping of its content
+    const unitFile = await writeTempFile(`${this.options.slug}.service`, configString);
+    try {
+      const commands = [];
+      if (options.logging?.enabled) {
+        commands.push(...buildLogFolderCommands(this.paths.logRoot, this.paths.log, this.paths.errorLog));
+      }
+      commands.push(
+        `install -m 644 ${shellQuote(unitFile.path)} ${shellQuote(this.paths.config)}`,
+        `systemctl${userCommand} daemon-reload`,
+        `systemctl${userCommand} enable ${shellQuote(`${this.options.slug}.service`)}`
+      );
+      const script = commands.join(' && ');
 
-    if (this.options.level === 'system') {
-      if (this.options.debugging) {
-        console.log(`NODE-SERVICE DEBUG: RUN AS ADMIN`);
-        console.log(`NODE-SERVICE DEBUG: ${script}`);
+      if (this.options.level === 'system') {
+        if (this.options.debugging) {
+          console.log(`NODE-SERVICE DEBUG: RUN AS ADMIN`);
+          console.log(`NODE-SERVICE DEBUG: ${script}`);
+        }
+        await ScriptRunner.runAsAdmin(script, {
+          name: this.options.name,
+          icns: this.options.icns,
+          headless: this.options.headless,
+        });
+      } else {
+        if (this.options.debugging) {
+          console.log(`NODE-SERVICE DEBUG: RUN`);
+          console.log(`NODE-SERVICE DEBUG: ${script}`);
+        }
+        await ScriptRunner.run(script);
       }
-      await ScriptRunner.runAsAdmin(script, {
-        name: this.options.name,
-        icns: this.options.icns,
-        headless: this.options.headless,
-      });
-    } else {
-      if (this.options.debugging) {
-        console.log(`NODE-SERVICE DEBUG: RUN`);
-        console.log(`NODE-SERVICE DEBUG: ${script}`);
-      }
-      await ScriptRunner.run(script);
+    } finally {
+      await unitFile.cleanup();
     }
 
     await this.updateStatus();

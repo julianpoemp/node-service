@@ -1,4 +1,4 @@
-import { ScriptRunner, ScriptRunnerError } from './functions';
+import { ScriptRunner, ScriptRunnerError, shellQuote, writeTempFile } from './functions';
 
 const describeUnix = process.platform === 'win32' ? describe.skip : describe;
 
@@ -27,5 +27,21 @@ describeUnix('ScriptRunner', () => {
       stdout: 'out\n',
       stderr: 'err\n',
     });
+  });
+});
+
+describe('shellQuote', () => {
+  it('quotes single quotes', () => {
+    expect(shellQuote(`/Users/o'neil/my file`)).toBe(`'/Users/o'\\''neil/my file'`);
+  });
+});
+
+describeUnix('writeTempFile', () => {
+  it('writes the content unchanged and cleans up', async () => {
+    const content = `[Service]\nExecStart="/opt/my app/run" '%%' \\n $HOME\n`;
+    const file = await writeTempFile('x.service', content);
+    await expect(ScriptRunner.run(`cat ${shellQuote(file.path)}`)).resolves.toBe(content);
+    await file.cleanup();
+    await expect(ScriptRunner.run(`test -e ${shellQuote(file.path)}`)).rejects.toBeInstanceOf(ScriptRunnerError);
   });
 });

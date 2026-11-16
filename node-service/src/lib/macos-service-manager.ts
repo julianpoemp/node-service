@@ -5,7 +5,7 @@ import {
   OSServiceStatus,
 } from './os-service-manager';
 import { build, parse, PlistObject } from 'plist';
-import { exists, removeEmptyProperties, ScriptRunner, ScriptRunnerError } from './functions';
+import { exists, removeEmptyProperties, ScriptRunner, ScriptRunnerError, shellQuote, writeTempFile, buildLogFolderCommands } from './functions';
 import { join } from 'path';
 import { homedir } from 'os';
 import * as Path from 'node:path';
@@ -73,43 +73,47 @@ export class MacOSServiceManager extends OSServiceManager {
     }
 
     const plist = this.buildPlist(options);
+    // the plist is written as is and copied by the script - no shell escaping of its content
+    const plistFile = await writeTempFile(`${this.options.slug}.plist`, plist);
 
-    if (this.options.level === 'system') {
-      const logFolderCreation = options.logging?.enabled
-        ? `mkdir -p ${this.paths.logRoot} 2>/dev/null && chmod 745 ${this.paths.logRoot} && touch ${this.paths.log} 2>/dev/null && chmod 745 ${this.paths.log} && touch ${this.paths.errorLog} 2>/dev/null && chmod 745 ${this.paths.errorLog} && `
-        : '';
+    try {
+      const commands = [];
+      if (this.options.level === 'system') {
+        if (options.logging?.enabled) {
+          commands.push(...buildLogFolderCommands(this.paths.logRoot, this.paths.log, this.paths.errorLog));
+        }
+        // launchd only loads daemons owned by root:wheel
+        commands.push(
+          `install -m 644 -o root -g wheel ${shellQuote(plistFile.path)} ${shellQuote(this.paths.plist)}`,
+          `launchctl load -w ${shellQuote(this.paths.plist)}`
+        );
+        const script = commands.join(' && ');
 
-      const script = `${logFolderCreation}printf '${plist
-        .replace(/["']/g, '\\"')
-        .replace(/\n/g, '\\n')}' > "/tmp/${
-        this.options.slug
-      }.plist" && mv -f "/tmp/${
-        this.options.slug
-      }.plist" /Library/LaunchDaemons/${
-        this.options.slug
-      }.plist && launchctl load -w "${this.paths.plist}"`;
+        if (this.options.debugging) {
+          console.log('NODE-SERVICE DEBUG: RUN AS ADMIN');
+          console.log(`NODE-SERVICE DEBUG: ${script}`);
+        }
 
-      if (this.options.debugging) {
-        console.log('NODE-SERVICE DEBUG: RUN AS ADMIN');
-        console.log(`NODE-SERVICE DEBUG: ${script}"`);
+        await ScriptRunner.runAsAdmin(script, {
+          name: this.options.name,
+          headless: this.options.headless,
+        });
+      } else {
+        await mkdir(this.paths.root, { recursive: true });
+        commands.push(
+          `install -m 644 ${shellQuote(plistFile.path)} ${shellQuote(this.paths.plist)}`,
+          `launchctl load -w ${shellQuote(this.paths.plist)}`
+        );
+        const script = commands.join(' && ');
+
+        if (this.options.debugging) {
+          console.log('NODE-SERVICE DEBUG: RUN');
+          console.log(`NODE-SERVICE DEBUG: ${script}`);
+        }
+        await ScriptRunner.run(script);
       }
-
-      await ScriptRunner.runAsAdmin(script, {
-        name: this.options.name,
-        headless: this.options.headless,
-      });
-    } else {
-      const script = `echo "${plist
-        .replace(/"/g, '\\"')
-        .replace(/\n/g, '\\n')}" > "${
-        this.paths.plist
-      }" && launchctl load -w "${this.paths.plist}"`;
-
-      if (this.options.debugging) {
-        console.log('NODE-SERVICE DEBUG: RUN');
-        console.log(`NODE-SERVICE DEBUG: ${script}`);
-      }
-      await ScriptRunner.run(script);
+    } finally {
+      await plistFile.cleanup();
     }
 
     await this.updateStatus();
