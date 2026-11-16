@@ -1,4 +1,5 @@
-import { ScriptRunner } from './functions';
+import { execFile } from 'node:child_process';
+import { ScriptRunner, ScriptRunnerError } from './functions';
 import {
   OSServiceInstallationOptions,
   OSServiceManager,
@@ -6,11 +7,65 @@ import {
   OSServiceStatus,
 } from './os-service-manager';
 
+/**
+ * minimum major version of servy-cli
+ */
+const SERVY_MIN_MAJOR_VERSION = 8;
+/**
+ * ERROR_SERVICE_DOES_NOT_EXIST, exit code of `sc.exe query` for a missing service
+ */
+const SC_ERROR_SERVICE_DOES_NOT_EXIST = 1060;
+
+/**
+ * Maps the output of `sc.exe query <name>` to a service status. The numeric SERVICE_STATUS state is used because the
+ * text after it is localized on some systems.
+ */
+export function parseScQueryState(output: string): OSServiceStatus {
+  const state = /STATE\s*:\s*(\d+)/.exec(output)?.[1];
+  switch (state) {
+    case '1': // SERVICE_STOPPED
+    case '7': // SERVICE_PAUSED
+      return OSServiceStatus.stopped;
+    case '2': // SERVICE_START_PENDING
+    case '3': // SERVICE_STOP_PENDING
+    case '5': // SERVICE_CONTINUE_PENDING
+    case '6': // SERVICE_PAUSE_PENDING
+      return OSServiceStatus.waiting;
+    case '4': // SERVICE_RUNNING
+      return OSServiceStatus.running;
+    default:
+      return OSServiceStatus.unknown;
+  }
+}
+
+/**
+ * Reads the version from the output of `servy-cli version`, e.g. "Servy.CLI 8.7.0".
+ */
+export function parseServyVersion(output: string): string | undefined {
+  return /Servy\.CLI\s+v?(\d+(?:\.\d+)*)/i.exec(output)?.[1];
+}
+
+/**
+ * Escapes a value for servy's `--envVars="KEY=value;KEY2=value2"`: `=`, `;`, `"` and `\` are escaped with a backslash.
+ * Without escaping backslashes, Windows paths like named pipes (`\\.\pipe\name`) arrive broken in the service.
+ */
+export function escapeServyEnvValue(value: string): string {
+  return `${value}`.replace(/([=";\\])/g, '\\$1');
+}
+
 export class WindowsServiceManager extends OSServiceManager {
+  private requirementsChecked = false;
+
   override async initialize(options: OSServiceOptions) {
+    // the status is read via sc.exe - servy-cli is only checked before commands that need it, so a status query
+    // works without servy-cli and without administrator privileges
     await super.initialize(options);
-    await this.checkRequirements();
-    await this.updateStatus();
+
+    if (options.level === 'user' && options.debugging) {
+      console.log(
+        `NODE-SERVICE DEBUG: servy only supports system services on Windows. Level "user" is installed as system service.`
+      );
+    }
   }
 
   private get servyCLIExecPath() {
@@ -21,22 +76,39 @@ export class WindowsServiceManager extends OSServiceManager {
     return this.options.slug;
   }
 
+  /**
+   * Checks if servy-cli (v8 or newer) can be executed. The result is cached.
+   */
   async checkRequirements() {
-    let version = '';
+    if (this.requirementsChecked) {
+      return;
+    }
+
+    let output = '';
     try {
-      version = await ScriptRunner.run(`${this.servyCLIExecPath} version`);
-      version = /Servy.CLI ([0-9]\.[0-9]\.[0-9])/g.exec(version)[1];
+      output = await ScriptRunner.run(`"${this.servyCLIExecPath}" version`);
     } catch (e) {
       throw new Error(
-        `Node-Service Error: Can't find servy-cli.exe binary. Make sure to have servy-cli v8 installed and referenced to %PATH$ environment variable. Or set the path to servy-cli.exe in options.windows.servyCLIExecPath. Download servy here: https://servy-win.github.io/`
+        `Node-Service Error: Can't run servy-cli (${this.servyCLIExecPath}). Make sure to have servy-cli v${SERVY_MIN_MAJOR_VERSION} installed and referenced in the %PATH% environment variable or set the path to servy-cli.exe in options.windows.pathToServyCliExe. Download servy here: https://servy-win.github.io/\n${
+          (e as Error)?.message ?? e
+        }`
       );
     }
 
+    const version = parseServyVersion(output);
     if (!version) {
       throw new Error(
-        `Node-Service Error: Can't read version information. Make sure that you have servy-cli v8 installed.`
+        `Node-Service Error: Can't read the version of servy-cli. Make sure that you have servy-cli v${SERVY_MIN_MAJOR_VERSION} installed. Output: ${output}`
       );
     }
+
+    if (parseInt(version.split('.')[0], 10) < SERVY_MIN_MAJOR_VERSION) {
+      throw new Error(
+        `Node-Service Error: servy-cli v${version} is too old. Install servy-cli v${SERVY_MIN_MAJOR_VERSION} or newer.`
+      );
+    }
+
+    this.requirementsChecked = true;
   }
 
   async install(
@@ -44,10 +116,11 @@ export class WindowsServiceManager extends OSServiceManager {
     commandArgs: string[],
     options: OSServiceInstallationOptions
   ): Promise<void> {
+    await this.checkRequirements();
     const envVars = [];
     if (options.env && Object.keys(options.env).length > 0) {
       for (const key of Object.keys(options.env)) {
-        envVars.push(`${key}=${options.env[key].replace(/([=";])/g, '\\$1')}`);
+        envVars.push(`${key}=${escapeServyEnvValue(options.env[key])}`);
       }
     }
 
@@ -76,7 +149,7 @@ export class WindowsServiceManager extends OSServiceManager {
       );
     }
 
-    const script = `${this.servyCLIExecPath} install ${installArgs.join(' ')}`;
+    const script = `"${this.servyCLIExecPath}" install ${installArgs.join(' ')}`;
 
     if (this.options.debugging) {
       console.log(`NODE-SERVICE DEBUG: ${script}`);
@@ -89,7 +162,9 @@ export class WindowsServiceManager extends OSServiceManager {
   }
 
   async uninstall(): Promise<void> {
-    const script = `${this.servyCLIExecPath} stop -n ${this.getServiceName} -q && ${this.servyCLIExecPath} uninstall -n ${this.getServiceName} -q`;
+    await this.checkRequirements();
+    // "&" instead of "&&": stopping an already stopped service fails, the uninstallation has to run anyway
+    const script = `"${this.servyCLIExecPath}" stop -n "${this.getServiceName}" -q & "${this.servyCLIExecPath}" uninstall -n "${this.getServiceName}" -q`;
     if (this.options.debugging) {
       console.log(`NODE-SERVICE DEBUG: ${script}`);
     }
@@ -102,7 +177,8 @@ export class WindowsServiceManager extends OSServiceManager {
   }
 
   async start(): Promise<void> {
-    const script = `${this.servyCLIExecPath} start -n ${this.getServiceName} -q`;
+    await this.checkRequirements();
+    const script = `"${this.servyCLIExecPath}" start -n "${this.getServiceName}" -q`;
 
     if (this.options.debugging) {
       console.log(`NODE-SERVICE DEBUG: ${script}`);
@@ -115,17 +191,15 @@ export class WindowsServiceManager extends OSServiceManager {
   }
 
   async stop(): Promise<void> {
-    const script = `${this.servyCLIExecPath} stop -n ${this.getServiceName} -q`;
+    await this.checkRequirements();
+    const script = `"${this.servyCLIExecPath}" stop -n "${this.getServiceName}" -q`;
     if (this.options.debugging) {
       console.log(`NODE-SERVICE DEBUG: ${script}`);
     }
-    await ScriptRunner.runAsAdmin(
-      `${this.servyCLIExecPath} stop -n ${this.getServiceName} -q`,
-      {
-        name: this.options.name,
-        headless: this.options.headless,
-      }
-    );
+    await ScriptRunner.runAsAdmin(script, {
+      name: this.options.name,
+      headless: this.options.headless,
+    });
     await this.updateStatus();
   }
 
@@ -134,40 +208,38 @@ export class WindowsServiceManager extends OSServiceManager {
     return this._status !== OSServiceStatus.not_installed;
   }
 
+  /**
+   * Reads the status via `sc.exe query`. Works without administrator privileges and independent of the system
+   * language. servy-cli isn't used because it doesn't report a missing service reliably.
+   */
   async updateStatus(): Promise<void> {
-    let output = '';
-
-    try {
-      output = await ScriptRunner.run(
-        `${this.servyCLIExecPath} status -n ${this.getServiceName} -q`
+    const serviceName = this.getServiceName;
+    this._status = await new Promise<OSServiceStatus>((resolve) => {
+      execFile(
+        'sc.exe',
+        ['query', serviceName],
+        { windowsHide: true, timeout: 10000 },
+        (error, stdout, stderr) => {
+          const code = (error as any)?.code;
+          if (code === SC_ERROR_SERVICE_DOES_NOT_EXIST) {
+            resolve(OSServiceStatus.not_installed);
+            return;
+          }
+          if (error) {
+            if (this.options.debugging) {
+              console.log(
+                `NODE-SERVICE DEBUG: ${
+                  new ScriptRunnerError(`sc.exe query ${serviceName}`, typeof code === 'number' ? code : null, `${stdout}`, `${stderr}`)
+                    .message
+                }`
+              );
+            }
+            resolve(OSServiceStatus.unknown);
+            return;
+          }
+          resolve(parseScQueryState(`${stdout}`));
+        }
       );
-    } catch (e) {
-      output = e;
-
-      if (output.indexOf(' was not found on computer') > -1) {
-        this._status = OSServiceStatus.not_installed;
-        return;
-      }
-
-      process.exit(1);
-    }
-
-    const matches = /Service status for '[^']+': (\w+)/g.exec(output);
-
-    if (matches && matches.length > 0) {
-      switch (matches[1]) {
-        case 'Running':
-          this._status = OSServiceStatus.running;
-          break;
-        case 'Stopped':
-          this._status = OSServiceStatus.stopped;
-          break;
-        case 'Start Pending':
-          this._status = OSServiceStatus.waiting;
-          break;
-        default:
-          this._status = OSServiceStatus.unknown;
-      }
-    }
+    });
   }
 }

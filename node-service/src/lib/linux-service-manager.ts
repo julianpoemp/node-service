@@ -4,11 +4,33 @@ import {
   OSServiceOptions,
   OSServiceStatus,
 } from './os-service-manager';
-import { exists, removeEmptyProperties, ScriptRunner } from './functions';
+import { exists, removeEmptyProperties, ScriptRunner, ScriptRunnerError } from './functions';
 import { join } from 'path';
 import { homedir } from 'os';
 import * as Path from 'node:path';
 import { mkdir, writeFile } from 'fs/promises';
+
+/**
+ * Maps the output of `systemctl status <name>.service` to a service status.
+ * @returns undefined if the output contains no known state
+ */
+export function parseSystemctlState(output: string): OSServiceStatus | undefined {
+  const state = / *Active: *([^ (]+) \(([^(]+)\)/.exec(output)?.[1];
+  switch (state) {
+    case 'active':
+      return OSServiceStatus.running;
+    case 'inactive':
+      return OSServiceStatus.stopped;
+    case 'activating':
+    case 'deactivating':
+    case 'reloading':
+      return OSServiceStatus.waiting;
+    case 'failed':
+      return OSServiceStatus.failed;
+    default:
+      return undefined;
+  }
+}
 
 export class LinuxServiceManager extends OSServiceManager {
   private paths: {
@@ -46,7 +68,7 @@ export class LinuxServiceManager extends OSServiceManager {
 
     if (await this.isInstalled()) {
       throw new Error(
-        `Node-Service Error: Can't install service. Service already exists. Unload it via launchctl unload or call manager.stop();`
+        `Node-Service Error: Can't install service. Service already exists. Remove it via systemctl disable or call manager.uninstall();`
       );
     }
 
@@ -121,35 +143,18 @@ export class LinuxServiceManager extends OSServiceManager {
   }
 
   async updateStatus(): Promise<void> {
-    try {
-      const userCommand = this.options.level === 'system' ? '' : ' --user';
-      const output = await ScriptRunner.run(
-        `systemctl${userCommand} status ${this.options.slug}.service`
-      );
-      const matches = / *Active: *([^ (]+) \(([^(]+)\)/g.exec(output);
+    const userCommand = this.options.level === 'system' ? '' : ' --user';
+    const command = `systemctl${userCommand} status ${this.options.slug}.service`;
+    // systemctl status exits with 3 for inactive and 4 for unknown units
+    const result = await ScriptRunner.exec(command);
+    const status = parseSystemctlState(result.stdout);
 
-      if (matches && matches.length > 0) {
-        switch (matches[1]) {
-          case 'active':
-            this._status = OSServiceStatus.running;
-            break;
-          case 'inactive':
-            this._status = OSServiceStatus.stopped;
-            break;
-          case 'activating':
-            this._status = OSServiceStatus.waiting;
-            break;
-          case 'failed':
-            this._status = OSServiceStatus.failed;
-            break;
-        }
-      }
-    } catch (e) {
-      if (/could not be found./g.exec(e)) {
-        this._status = OSServiceStatus.not_installed;
-      } else {
-        throw new Error(e);
-      }
+    if (status) {
+      this._status = status;
+    } else if (/could not be found/.test(`${result.stdout}\n${result.stderr}`)) {
+      this._status = OSServiceStatus.not_installed;
+    } else if (result.code !== 0) {
+      throw new ScriptRunnerError(command, result.code, result.stdout, result.stderr);
     }
   }
 

@@ -5,11 +5,30 @@ import {
   OSServiceStatus,
 } from './os-service-manager';
 import { build, parse, PlistObject } from 'plist';
-import { exists, removeEmptyProperties, ScriptRunner } from './functions';
+import { exists, removeEmptyProperties, ScriptRunner, ScriptRunnerError } from './functions';
 import { join } from 'path';
 import { homedir } from 'os';
 import * as Path from 'node:path';
 import { mkdir, readFile, writeFile } from 'fs/promises';
+
+/**
+ * Maps the output of `launchctl print <domain>/<label>` to a service status.
+ * @returns undefined if the output contains no known state
+ */
+export function parseLaunchctlState(output: string): OSServiceStatus | undefined {
+  const state = /state\s*=\s*([^\n]+)/.exec(output)?.[1]?.trim();
+  switch (state) {
+    case 'running':
+      return OSServiceStatus.running;
+    case 'not running':
+      return OSServiceStatus.stopped;
+    case 'waiting':
+    case 'spawn scheduled':
+      return OSServiceStatus.waiting;
+    default:
+      return undefined;
+  }
+}
 
 export class MacOSServiceManager extends OSServiceManager {
   private paths: {
@@ -49,7 +68,7 @@ export class MacOSServiceManager extends OSServiceManager {
 
     if (await this.isInstalled()) {
       throw new Error(
-        `Node-Service Error: Can't install service. Service already exists. Unload it via launchctl unload or call manager.stop();`
+        `Node-Service Error: Can't install service. Service already exists. Unload it via launchctl unload or call manager.uninstall();`
       );
     }
 
@@ -129,33 +148,20 @@ export class MacOSServiceManager extends OSServiceManager {
   }
 
   async updateStatus(): Promise<void> {
-    try {
-      if (this.domain) {
-        const output = await ScriptRunner.run(
-          `launchctl print ${this.domain}/${this.label}`
-        );
-        const matches = /state\s*=\s*([^\n]+)/g.exec(output);
+    if (!this.domain) {
+      return;
+    }
+    const command = `launchctl print ${this.domain}/${this.label}`;
+    // launchctl exits with 113 if the service doesn't exist
+    const result = await ScriptRunner.exec(command);
+    const status = parseLaunchctlState(result.stdout);
 
-        if (matches && matches.length > 0) {
-          switch (matches[1]) {
-            case 'running':
-              this._status = OSServiceStatus.running;
-              break;
-            case 'not running':
-              this._status = OSServiceStatus.stopped;
-              break;
-            case 'waiting':
-              this._status = OSServiceStatus.waiting;
-              break;
-          }
-        }
-      }
-    } catch (e) {
-      if (/Could not find service/g.exec(e)) {
-        this._status = OSServiceStatus.not_installed;
-      } else {
-        throw new Error(e);
-      }
+    if (status) {
+      this._status = status;
+    } else if (/Could not find service/.test(`${result.stdout}\n${result.stderr}`)) {
+      this._status = OSServiceStatus.not_installed;
+    } else if (result.code !== 0) {
+      throw new ScriptRunnerError(command, result.code, result.stdout, result.stderr);
     }
   }
 

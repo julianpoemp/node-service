@@ -74,6 +74,34 @@ export class ScriptRunnerOptions {
   }
 }
 
+/**
+ * Error of a failed command. Contains the exit code and the complete output, the message contains stderr (or stdout if
+ * stderr is empty) so that string matches like `/could not be found/` keep working on `${error}`.
+ */
+export class ScriptRunnerError extends Error {
+  constructor(
+    public readonly command: string,
+    public readonly code: number | null,
+    public readonly stdout: string,
+    public readonly stderr: string,
+    message?: string
+  ) {
+    super(
+      message ??
+        `Command failed with exit code ${code}: ${command}\n${
+          stderr.trim() !== '' ? stderr : stdout
+        }`
+    );
+    this.name = 'ScriptRunnerError';
+  }
+}
+
+export interface ScriptRunnerResult {
+  code: number | null;
+  stdout: string;
+  stderr: string;
+}
+
 export class ScriptRunner {
   public static runAsAdmin(
     command: string,
@@ -99,75 +127,113 @@ export class ScriptRunner {
     } else {
       return new Promise<void>((resolve, reject) => {
         SudoPrompt.exec(command, options, (error, stdout, stderr) => {
-          if (error) reject(stderr ?? error);
-          else resolve();
+          if (error) {
+            // stderr is usually an empty string (e.g. if the user cancelled the prompt) - keep the error message
+            const stderrString = `${stderr ?? ''}`;
+            reject(
+              new ScriptRunnerError(
+                command,
+                (error as any).code ?? null,
+                `${stdout ?? ''}`,
+                stderrString,
+                `${error.message}${
+                  stderrString.trim() !== '' ? `\n${stderrString}` : ''
+                }`
+              )
+            );
+          } else {
+            resolve();
+          }
         });
       });
     }
   }
 
+  /**
+   * Runs a command and resolves with stdout. Rejects with a ScriptRunnerError if the command exits with a code != 0.
+   */
   public static async run(
     scriptPath: string,
     options: Partial<ScriptRunnerOptions> = new ScriptRunnerOptions(),
-    processCreatedCallback: (process: ChildProcess) => void = (
-      process: ChildProcess
-    ) => {}
-  ) {
-    return new Promise<string>((resolve, reject) => {
-      options = new ScriptRunnerOptions(options);
-      let output = '';
-      let error = '';
+    processCreatedCallback: (process: ChildProcess) => void = () => {
+      // nothing
+    }
+  ): Promise<string> {
+    const result = await ScriptRunner.exec(
+      scriptPath,
+      options,
+      processCreatedCallback
+    );
+    if (result.code !== null && result.code !== 0) {
+      throw new ScriptRunnerError(
+        scriptPath,
+        result.code,
+        result.stdout,
+        result.stderr
+      );
+    }
+    return result.stdout;
+  }
+
+  /**
+   * Runs a command and resolves with exit code, stdout and stderr - also if the exit code is != 0. Used for status
+   * queries whose tools report states via exit codes (e.g. `systemctl status` exits with 3 for inactive services).
+   * Rejects only if the command can't be started.
+   */
+  public static exec(
+    scriptPath: string,
+    options: Partial<ScriptRunnerOptions> = new ScriptRunnerOptions(),
+    processCreatedCallback: (process: ChildProcess) => void = () => {
+      // nothing
+    }
+  ): Promise<ScriptRunnerResult> {
+    return new Promise<ScriptRunnerResult>((resolve, reject) => {
+      const runnerOptions = new ScriptRunnerOptions(options);
+      let stdout = '';
+      let stderr = '';
 
       const childProcess = exec(scriptPath, {
-        env: { ...process.env, ...options.env },
+        env: { ...process.env, ...runnerOptions.env },
       });
 
-      let pipeLine;
-      if (childProcess) {
-        processCreatedCallback(childProcess);
-        childProcess.stdin.on('data', (data) => {}); // hack to allow inputs to child
-
-        childProcess.stdout.on('data', (data) => {
-          output += data;
-
-          if (options.showOutput) {
-            options.catchOutput(data);
-          }
-        });
-        childProcess.stdout.on('error', (data) => {
-          error += data;
-
-          if (options.showOutput) {
-            options.catchError(data.message);
-          }
-        });
-
-        childProcess.stderr.on('data', (data) => {
-          error += data;
-
-          if (options.showOutput) {
-            options.catchError(data);
-          }
-        });
-
-        // what to do when the command is done
-        childProcess.on('close', (code) => {
-          if (pipeLine) {
-            pipeLine.destroy();
-          }
-          if (code !== null && code !== 0 && error !== '') {
-            reject(error);
-          } else {
-            resolve(output);
-          }
-        });
-        childProcess.stdin.on('data', (data) => {}); // hack to allow inputs to child
-      } else {
-        if (pipeLine) {
-          pipeLine.destroy();
-        }
-        reject("Can't run script.");
+      if (!childProcess) {
+        reject(new ScriptRunnerError(scriptPath, null, '', '', `Can't run script: ${scriptPath}`));
+        return;
       }
+
+      processCreatedCallback(childProcess);
+      childProcess.stdin?.on('data', () => {
+        // allows inputs to child
+      });
+
+      childProcess.stdout?.on('data', (data) => {
+        stdout += data;
+        if (runnerOptions.showOutput) {
+          runnerOptions.catchOutput(data);
+        }
+      });
+      childProcess.stdout?.on('error', (data) => {
+        stderr += data;
+        if (runnerOptions.showOutput) {
+          runnerOptions.catchError(data.message);
+        }
+      });
+      childProcess.stderr?.on('data', (data) => {
+        stderr += data;
+        if (runnerOptions.showOutput) {
+          runnerOptions.catchError(data);
+        }
+      });
+
+      childProcess.on('error', (error) => {
+        reject(
+          new ScriptRunnerError(scriptPath, null, stdout, stderr, `Can't run script ${scriptPath}: ${error.message}`)
+        );
+      });
+
+      childProcess.on('close', (code) => {
+        resolve({ code, stdout, stderr });
+      });
     });
   }
 }
