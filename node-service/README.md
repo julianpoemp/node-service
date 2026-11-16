@@ -34,6 +34,21 @@ This project is in an early development stage. There may be bugs or missing feat
 - Environment variables (`env`) are escaped for servy: `=`, `;`, `"` and `\` are prefixed with a backslash, so Windows
   paths and named pipes (`\\.\pipe\name`) arrive unchanged in the service.
 
+## Debugging
+
+With `debugging: true` the commands and generated service files are logged. Set `logger` to pass the output to your own
+logging instead of `console.log`:
+
+```typescript
+const manager = await initializeOSService({
+  name: 'Hello World Service Example',
+  slug: 'hello-world',
+  level: 'user',
+  debugging: true,
+  logger: (message, ...params) => myLogger.debug(message, ...params),
+});
+```
+
 ## Errors
 
 Failing commands reject with a `ScriptRunnerError` (`Error` with `code`, `stdout` and `stderr`). Status queries don't

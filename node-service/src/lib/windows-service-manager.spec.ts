@@ -1,5 +1,5 @@
 import { OSServiceStatus } from './os-service-manager';
-import { escapeServyEnvValue, parseScQueryState, parseServyVersion } from './windows-service-manager';
+import { escapeServyEnvValue, parseScQueryState, parseServyVersion, WindowsServiceManager } from './windows-service-manager';
 
 describe('windows', () => {
   const scQuery = (state: string) => `
@@ -33,5 +33,30 @@ SERVICE_NAME: ocb-service
     expect(escapeServyEnvValue('\\\\.\\pipe\\ocb_123')).toBe('\\\\\\\\.\\\\pipe\\\\ocb_123');
     expect(escapeServyEnvValue('C:\\data\\config.json')).toBe('C:\\\\data\\\\config.json');
     expect(escapeServyEnvValue('a=b;c"d')).toBe('a\\=b\\;c\\"d');
+  });
+});
+
+describe('logger option', () => {
+  it('receives the debug output instead of console.log', async () => {
+    const messages: unknown[] = [];
+    const consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => undefined);
+    const manager = new WindowsServiceManager();
+    await manager.initialize({
+      name: 'Test',
+      slug: 'node-service-test-does-not-exist',
+      level: 'user',
+      debugging: true,
+      logger: (message) => messages.push(message),
+    });
+    expect(messages.some((a) => `${a}`.startsWith('NODE-SERVICE DEBUG: servy only supports system services'))).toBe(true);
+    expect(consoleSpy).not.toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
+  it('logs nothing without debugging', async () => {
+    const messages: unknown[] = [];
+    const manager = new WindowsServiceManager();
+    await manager.initialize({ name: 'Test', slug: 'x', level: 'user', logger: (message) => messages.push(message) });
+    expect(messages).toEqual([]);
   });
 });

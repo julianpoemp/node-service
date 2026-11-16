@@ -89,10 +89,8 @@ export class MacOSServiceManager extends OSServiceManager {
         );
         const script = commands.join(' && ');
 
-        if (this.options.debugging) {
-          console.log('NODE-SERVICE DEBUG: RUN AS ADMIN');
-          console.log(`NODE-SERVICE DEBUG: ${script}`);
-        }
+        this.debug('RUN AS ADMIN');
+        this.debug(script);
 
         await ScriptRunner.runAsAdmin(script, {
           name: this.options.name,
@@ -106,10 +104,9 @@ export class MacOSServiceManager extends OSServiceManager {
         );
         const script = commands.join(' && ');
 
-        if (this.options.debugging) {
-          console.log('NODE-SERVICE DEBUG: RUN');
-          console.log(`NODE-SERVICE DEBUG: ${script}`);
-        }
+        this.debug('RUN');
+        this.debug(script);
+
         await ScriptRunner.run(script);
       }
     } finally {
@@ -129,23 +126,17 @@ export class MacOSServiceManager extends OSServiceManager {
 
   async start(): Promise<void> {
     if (this.options.level === 'system') {
-      if (this.options.debugging) {
-        console.log('NODE-SERVICE DEBUG: RUN AS ADMIN');
-        console.log(
-          `NODE-SERVICE DEBUG: launchctl start "${this.options.slug}"`
-        );
-      }
+      this.debug('RUN AS ADMIN');
+      this.debug(`launchctl start "${this.options.slug}"`);
+
       await ScriptRunner.runAsAdmin(`launchctl start "${this.options.slug}"`, {
         name: this.options.name,
         headless: this.options.headless,
       });
     } else {
-      if (this.options.debugging) {
-        console.log('NODE-SERVICE DEBUG: RUN');
-        console.log(
-          `NODE-SERVICE DEBUG: launchctl start "${this.options.slug}"`
-        );
-      }
+      this.debug('RUN');
+      this.debug(`launchctl start "${this.options.slug}"`);
+
       await ScriptRunner.run(`launchctl start "${this.options.slug}"`);
     }
     await this.updateStatus();
@@ -171,23 +162,17 @@ export class MacOSServiceManager extends OSServiceManager {
 
   async stop(): Promise<void> {
     if (this.options.level === 'system') {
-      if (this.options.debugging) {
-        console.log('NODE-SERVICE DEBUG: RUN AS ADMIN');
-        console.log(
-          `NODE-SERVICE DEBUG: launchctl stop "${this.options.slug}"`
-        );
-      }
+      this.debug('RUN AS ADMIN');
+      this.debug(`launchctl stop "${this.options.slug}"`);
+
       await ScriptRunner.runAsAdmin(`launchctl stop '${this.options.slug}'`, {
         name: this.options.name,
         headless: this.options.headless,
       });
     } else {
-      if (this.options.debugging) {
-        console.log('NODE-SERVICE DEBUG: RUN');
-        console.log(
-          `NODE-SERVICE DEBUG: launchctl stop "${this.options.slug}"`
-        );
-      }
+      this.debug('RUN');
+      this.debug(`launchctl stop "${this.options.slug}"`);
+
       await ScriptRunner.run(`launchctl stop '${this.options.slug}'`);
     }
     await this.updateStatus();
@@ -205,19 +190,17 @@ export class MacOSServiceManager extends OSServiceManager {
     }
 
     if (this.options.level === 'system') {
-      if (this.options.debugging) {
-        console.log('NODE-SERVICE DEBUG: RUN AS ADMIN');
-        console.log(`NODE-SERVICE DEBUG: ${removeScript}`);
-      }
+      this.debug('RUN AS ADMIN');
+      this.debug(removeScript);
+
       await ScriptRunner.runAsAdmin(removeScript, {
         name: `Uninstallation of ${this.options.name}`,
         headless: this.options.headless,
       });
     } else {
-      if (this.options.debugging) {
-        console.log('NODE-SERVICE DEBUG: RUN');
-        console.log(`NODE-SERVICE DEBUG: ${removeScript}`);
-      }
+      this.debug('RUN');
+      this.debug(removeScript);
+
       await ScriptRunner.run(removeScript);
     }
     await this.updateStatus();
@@ -244,10 +227,8 @@ export class MacOSServiceManager extends OSServiceManager {
       };
     }
 
-    if (this.options.debugging) {
-      console.log('NODE-SERVICE DEBUG: CREATE MACOS PLIST FROM OBJECT:');
-      console.log(plistValue);
-    }
+    this.debug('CREATE MACOS PLIST FROM OBJECT:');
+    this.debug(plistValue);
 
     return build(removeEmptyProperties(plistValue));
   }
@@ -296,10 +277,8 @@ export class MacOSServiceManager extends OSServiceManager {
 
       const plist = parse(plistContent) as PlistObject;
 
-      if (this.options.debugging) {
-        console.log('NODE-SERVICE DEBUG: Parse Plist');
-        console.log(plist);
-      }
+      this.debug('Parse Plist');
+      this.debug(plist);
 
       this.cwd = plist['WorkingDirectory'] as string;
       this.paths.log = plist['StandardOutPath'] as string;

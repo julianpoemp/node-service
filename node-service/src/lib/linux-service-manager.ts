@@ -123,20 +123,18 @@ export class LinuxServiceManager extends OSServiceManager {
       const script = commands.join(' && ');
 
       if (this.options.level === 'system') {
-        if (this.options.debugging) {
-          console.log(`NODE-SERVICE DEBUG: RUN AS ADMIN`);
-          console.log(`NODE-SERVICE DEBUG: ${script}`);
-        }
+        this.debug(`RUN AS ADMIN`);
+        this.debug(script);
+
         await ScriptRunner.runAsAdmin(script, {
           name: this.options.name,
           icns: this.options.icns,
           headless: this.options.headless,
         });
       } else {
-        if (this.options.debugging) {
-          console.log(`NODE-SERVICE DEBUG: RUN`);
-          console.log(`NODE-SERVICE DEBUG: ${script}`);
-        }
+        this.debug(`RUN`);
+        this.debug(script);
+
         await ScriptRunner.run(script);
       }
     } finally {
@@ -158,19 +156,17 @@ export class LinuxServiceManager extends OSServiceManager {
     const userCommand = this.options.level === 'system' ? '' : ' --user';
     const script = `systemctl${userCommand} start "${this.options.slug}"`;
     if (this.options.level === 'system') {
-      if (this.options.debugging) {
-        console.log(`NODE-SERVICE DEBUG: RUN AS ADMIN`);
-        console.log(`NODE-SERVICE DEBUG: ${script}`);
-      }
+      this.debug(`RUN AS ADMIN`);
+      this.debug(script);
+
       await ScriptRunner.runAsAdmin(script, {
         name: this.options.name,
         headless: this.options.headless,
       });
     } else {
-      if (this.options.debugging) {
-        console.log(`NODE-SERVICE DEBUG: RUN`);
-        console.log(`NODE-SERVICE DEBUG: ${script}`);
-      }
+      this.debug(`RUN`);
+      this.debug(script);
+
       await ScriptRunner.run(script);
     }
     await this.updateStatus();
@@ -196,19 +192,17 @@ export class LinuxServiceManager extends OSServiceManager {
     const userCommand = this.options.level === 'system' ? '' : ' --user';
     const script = `systemctl${userCommand} stop '${this.options.slug}'`;
     if (this.options.level === 'system') {
-      if (this.options.debugging) {
-        console.log(`NODE-SERVICE DEBUG: RUN AS ADMIN`);
-        console.log(`NODE-SERVICE DEBUG: ${script}`);
-      }
+      this.debug(`RUN AS ADMIN`);
+      this.debug(script);
+
       await ScriptRunner.runAsAdmin(script, {
         name: this.options.name,
         headless: this.options.headless,
       });
     } else {
-      if (this.options.debugging) {
-        console.log(`NODE-SERVICE DEBUG: RUN`);
-        console.log(`NODE-SERVICE DEBUG: ${script}`);
-      }
+      this.debug(`RUN`);
+      this.debug(script);
+
       await ScriptRunner.run(script);
     }
     await this.updateStatus();
@@ -227,19 +221,17 @@ export class LinuxServiceManager extends OSServiceManager {
     }
 
     if (this.options.level === 'system') {
-      if (this.options.debugging) {
-        console.log(`NODE-SERVICE DEBUG: RUN AS ADMIN`);
-        console.log(`NODE-SERVICE DEBUG: ${removeScript}`);
-      }
+      this.debug(`RUN AS ADMIN`);
+      this.debug(removeScript);
+
       await ScriptRunner.runAsAdmin(removeScript, {
         name: `Uninstallation of ${this.options.name}`,
         headless: this.options.headless,
       });
     } else {
-      if (this.options.debugging) {
-        console.log(`NODE-SERVICE DEBUG: RUN`);
-        console.log(`NODE-SERVICE DEBUG: ${removeScript}`);
-      }
+      this.debug(`RUN`);
+      this.debug(removeScript);
+
       await ScriptRunner.run(removeScript);
     }
     await this.updateStatus();
@@ -293,11 +285,8 @@ export class LinuxServiceManager extends OSServiceManager {
       },
     });
 
-
-    if (this.options.debugging) {
-      console.log(`NODE-SERVICE DEBUG: Build service file from object:`);
-      console.log(`NODE-SERVICE DEBUG: ${configObject}`);
-    }
+    this.debug(`Build service file from object:`);
+    this.debug(JSON.stringify(configObject, null, 2));
 
     let configString = ``;
 

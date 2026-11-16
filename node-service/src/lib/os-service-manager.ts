@@ -4,7 +4,14 @@ export interface OSServiceOptions {
   level: 'system' | 'user';
   windows?: WindowsOSServiceOptions;
   headless?: boolean;
+  /**
+   * logs debug output (commands, generated service files) if true
+   */
   debugging?: boolean;
+  /**
+   * receives the debug output, default: console.log
+   */
+  logger?: (message: unknown, ...optionalParams: unknown[]) => void;
   icns?: string;
 }
 
@@ -78,6 +85,17 @@ export abstract class OSServiceManager {
   protected _options?: OSServiceOptions;
   protected _status = OSServiceStatus.not_installed;
   protected _installationOptions?: OSServiceInstallationOptions;
+
+  /**
+   * Logs debug output via options.logger (default console.log) if options.debugging is true.
+   */
+  protected debug(message: unknown, ...optionalParams: unknown[]) {
+    if (!this._options?.debugging) {
+      return;
+    }
+    const logger = this._options.logger ?? console.log;
+    logger(typeof message === 'string' ? `NODE-SERVICE DEBUG: ${message}` : message, ...optionalParams);
+  }
 
   public async initialize(options: OSServiceOptions) {
     this._options = options;

@@ -61,10 +61,8 @@ export class WindowsServiceManager extends OSServiceManager {
     // works without servy-cli and without administrator privileges
     await super.initialize(options);
 
-    if (options.level === 'user' && options.debugging) {
-      console.log(
-        `NODE-SERVICE DEBUG: servy only supports system services on Windows. Level "user" is installed as system service.`
-      );
+    if (options.level === 'user') {
+      this.debug(`servy only supports system services on Windows. Level "user" is installed as system service.`);
     }
   }
 
@@ -151,9 +149,8 @@ export class WindowsServiceManager extends OSServiceManager {
 
     const script = `"${this.servyCLIExecPath}" install ${installArgs.join(' ')}`;
 
-    if (this.options.debugging) {
-      console.log(`NODE-SERVICE DEBUG: ${script}`);
-    }
+    this.debug(script);
+
     await ScriptRunner.runAsAdmin(script, {
       name: this.options.name,
       headless: this.options.headless,
@@ -165,9 +162,7 @@ export class WindowsServiceManager extends OSServiceManager {
     await this.checkRequirements();
     // "&" instead of "&&": stopping an already stopped service fails, the uninstallation has to run anyway
     const script = `"${this.servyCLIExecPath}" stop -n "${this.getServiceName}" -q & "${this.servyCLIExecPath}" uninstall -n "${this.getServiceName}" -q`;
-    if (this.options.debugging) {
-      console.log(`NODE-SERVICE DEBUG: ${script}`);
-    }
+    this.debug(script);
 
     await ScriptRunner.runAsAdmin(script, {
       name: this.options.name,
@@ -180,9 +175,8 @@ export class WindowsServiceManager extends OSServiceManager {
     await this.checkRequirements();
     const script = `"${this.servyCLIExecPath}" start -n "${this.getServiceName}" -q`;
 
-    if (this.options.debugging) {
-      console.log(`NODE-SERVICE DEBUG: ${script}`);
-    }
+    this.debug(script);
+
     await ScriptRunner.runAsAdmin(script, {
       name: this.options.name,
       headless: this.options.headless,
@@ -193,9 +187,8 @@ export class WindowsServiceManager extends OSServiceManager {
   async stop(): Promise<void> {
     await this.checkRequirements();
     const script = `"${this.servyCLIExecPath}" stop -n "${this.getServiceName}" -q`;
-    if (this.options.debugging) {
-      console.log(`NODE-SERVICE DEBUG: ${script}`);
-    }
+    this.debug(script);
+
     await ScriptRunner.runAsAdmin(script, {
       name: this.options.name,
       headless: this.options.headless,
@@ -226,14 +219,11 @@ export class WindowsServiceManager extends OSServiceManager {
             return;
           }
           if (error) {
-            if (this.options.debugging) {
-              console.log(
-                `NODE-SERVICE DEBUG: ${
-                  new ScriptRunnerError(`sc.exe query ${serviceName}`, typeof code === 'number' ? code : null, `${stdout}`, `${stderr}`)
-                    .message
-                }`
-              );
-            }
+            this.debug(
+              new ScriptRunnerError(`sc.exe query ${serviceName}`, typeof code === 'number' ? code : null, `${stdout}`, `${stderr}`)
+                .message
+            );
+
             resolve(OSServiceStatus.unknown);
             return;
           }
