@@ -2,6 +2,12 @@
 
 This file was generated using [@jscutlery/semver](https://github.com/jscutlery/semver).
 
+## [1.2.1](https://github.com/julianpoemp/node-service/compare/node-service-1.2.0...node-service-1.2.1) (2026-11-16)
+
+### Bug Fixes
+
+* **node-service:** don't run servy-cli without admin privileges ([4776f56](https://github.com/julianpoemp/node-service/commit/4776f56c12a62eb37d7f1a744fce5600def74943))
+
 # [1.2.0](https://github.com/julianpoemp/node-service/compare/node-service-1.1.0...node-service-1.2.0) (2026-11-16)
 
 ### Bug Fixes
